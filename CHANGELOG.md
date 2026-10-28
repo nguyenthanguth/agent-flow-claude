@@ -2,6 +2,14 @@
 
 ## Unreleased (fork)
 
+## 1.0.1
+
+- Subagents that were interrupted or killed mid-tool no longer show up as running when Agent Flow attaches to a session; one resumed later with SendMessage still appears as soon as it writes again
+- With only a few agents, auto-fit no longer zooms in to twice the natural size: text and nodes stay at a readable size (zoom in by hand still goes up to 4×)
+- Opening the Chat transcript, Files or an agent's chat panel moves the graph into the space left of the panel instead of leaving nodes underneath it
+
+## 1.0.0 (fork)
+
 - **Plan usage bar** in the top bar: percent used of the 5-hour session and weekly limits (only those your plan has), time to reset, and a details popover — the same data as Claude Code's `/usage`, fetched every 5 minutes with Claude Code's login (`--no-plan-usage` turns it off). The popover also shows this machine's usage in the same windows, across all projects and subagents, priced at API rates. The last good limits are cached, so a restart or a rate-limited refresh still shows them with their age
   - Machine totals take each response's own usage and timestamp even when a tool input contains look-alike `usage` / `timestamp` keys; the weekly total follows the weekly limit only when that limit is in effect (otherwise it is the last 7 days, as labelled)
   - Kept limits expire after 6 hours of failed refreshes, ages are shown as "12 min ago", limits are published from cache before the first fetch returns, and limits with the same label get distinct ids

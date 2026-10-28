@@ -1,6 +1,6 @@
 {
   "name": "agent-flow-claude",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Real-time visualization of Claude Code sessions and subagents (based on Agent Flow)",
   "bin": {
