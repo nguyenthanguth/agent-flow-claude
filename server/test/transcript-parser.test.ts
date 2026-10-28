@@ -294,6 +294,31 @@ describe('subagent model (#91)', () => {
   })
 })
 
+describe('prescanExistingContent', () => {
+  it('keeps only the label entry and the current turn, not the whole history', () => {
+    const { session, parser } = setup()
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-flow-parser-'))
+    const file = path.join(dir, 'session.jsonl')
+    const user = (uuid: string, text: string) => ({ type: 'user', uuid, message: { role: 'user', content: text } })
+    const assistant = (uuid: string, text: string) => ({ type: 'assistant', uuid, message: { role: 'assistant', content: [{ type: 'text', text }] } })
+    const history = [
+      user('u1', 'Fix the login bug'),
+      assistant('a1', 'On it'),
+      ...Array.from({ length: 200 }, (_, i) => assistant(`x${i}`, `step ${i}`)),
+      user('u2', 'Now add tests'),
+      assistant('a2', 'Writing tests'),
+    ].map(e => JSON.stringify(e)).join('\n') + '\n'
+    fs.writeFileSync(file, history)
+
+    const entries = parser.prescanExistingContent(file, Buffer.byteLength(history), session)
+    assert.deepEqual(entries.map(e => e.uuid), ['u1', 'u2', 'a2'])
+
+    session.labelSet = false
+    parser.extractSessionLabel(entries, session)
+    assert.equal(session.label, 'Fix the login bug')
+  })
+})
+
 describe('parseTaskNotification', () => {
   it('extracts the tool use id, status and result', () => {
     const text = taskNotification('toolu_9', 'killed', 'a &gt; b').message.content as string

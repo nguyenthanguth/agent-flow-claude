@@ -10,7 +10,7 @@ import {
   TranscriptEntry, ToolUseBlock, ToolResultBlock,
   emitSubagentSpawn,
 } from './protocol'
-import { readFileChunk } from './fs-utils'
+import { forEachLine } from './fs-utils'
 import {
   PREVIEW_MAX, ARGS_MAX, RESULT_MAX, MESSAGE_MAX,
   SESSION_LABEL_MAX, SESSION_LABEL_TRUNCATED,
@@ -555,14 +555,19 @@ export class TranscriptParser {
    */
   prescanExistingContent(filePath: string, size: number, session: WatchedSession): TranscriptEntry[] {
     if (size === 0) { return [] }
-    const catchUpEntries: TranscriptEntry[] = []
+    // Only two kinds of entries are needed afterwards: the first real user
+    // message (session label) and the current turn (catch-up). Keeping every
+    // entry would hold a whole transcript in memory — they reach hundreds of MB.
+    let labelEntry: TranscriptEntry | null = null
+    let currentTurn: TranscriptEntry[] = []
+    let entryCount = 0
     try {
       // Read only up to `size` bytes — the file may have grown since stat.
       // Reading beyond would add tool_use IDs to the dedup set that haven't
       // been accounted for in fileSize, causing readNewLines to silently skip them.
-      const content = readFileChunk(filePath, 0, size)
-      for (const line of content.split(/\r?\n/)) {
-        if (!line.trim()) { continue }
+      // Streamed line by line: large files don't fit in a single string.
+      forEachLine(filePath, size, (line) => {
+        if (!line.trim()) { return }
         try {
           const entry = JSON.parse(line.trim()) as TranscriptEntry & { toolUseResult?: unknown }
           // Track background subagents still running at attach time, so the
@@ -630,15 +635,18 @@ export class TranscriptParser {
           if (entry.type === 'assistant' && isRealModelId(entry.message?.model) && !session.model) {
             session.model = entry.message.model
           }
-          // Collect emittable entries (user and assistant turns)
+          // Keep the label candidate and the entries since the last user entry
           if (entry.type === 'user' || entry.type === 'assistant') {
-            catchUpEntries.push(entry)
+            entryCount++
+            if (!labelEntry && entry.type === 'user' && this.extractUserMessageText(entry)) { labelEntry = entry }
+            if (entry.type === 'user') { currentTurn = [entry] } else { currentTurn.push(entry) }
           }
         } catch (err) { log.debug('Skipping unparseable transcript line:', err) }
-      }
-      log.info(`Pre-scanned ${session.seenToolUseIds.size} existing tool_use IDs, ${catchUpEntries.length} entries total`)
+      })
+      log.info(`Pre-scanned ${session.seenToolUseIds.size} existing tool_use IDs, ${entryCount} entries total`)
 
-      return catchUpEntries
+      // Label entry first, current turn last: emitCatchUpEntries replays from the last user entry
+      return labelEntry && !currentTurn.includes(labelEntry) ? [labelEntry, ...currentTurn] : currentTurn
     } catch (err) {
       log.error('Pre-scan failed:', err)
       return []

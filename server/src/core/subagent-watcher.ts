@@ -20,7 +20,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { AgentEvent, SubagentState, WatchedSession, emitSubagentSpawn } from './protocol'
 import { SESSION_ID_DISPLAY, ORCHESTRATOR_NAME, ARGS_MAX, generateSubagentFallbackName, resolveSubagentChildName } from './constants'
-import { readNewFileLines, readFileChunk, completeLinesSize } from './fs-utils'
+import { readNewFileLines, readFileChunk, completeLinesSize, forEachLine } from './fs-utils'
 import { TranscriptParser } from './transcript-parser'
 import { createLogger } from './logger'
 
@@ -181,15 +181,22 @@ function startWatchingSubagentFile(
   // is still active (has unmatched tool_use blocks = pending work).
   const pendingToolUseIds = new Set<string>()
   let recentlyWritten = false
+  if (state.finished) {
+    // Already done when we found it — history only, nothing to show or tail,
+    // so don't read it (old subagent transcripts can be hundreds of MB).
+    state.spawnEmitted = true
+    return
+  }
+
   try {
     const stat = fs.statSync(filePath)
     recentlyWritten = Date.now() - stat.mtimeMs < SUBAGENT_RECENT_WRITE_MS
     // Only complete lines: a line still being written is read by the tail later
     const size = completeLinesSize(filePath, stat.size)
     if (size > 0) {
-      const content = readFileChunk(filePath, 0, size)
-      for (const line of content.split(/\r?\n/)) {
-        if (!line.trim()) continue
+      // Streamed: large transcripts don't fit in a single string
+      forEachLine(filePath, size, (line) => {
+        if (!line.trim()) return
         try {
           const raw: unknown = JSON.parse(line.trim())
           const entry = raw as { message?: { content?: Array<{ type: string; id?: string; tool_use_id?: string }> } }
@@ -204,16 +211,10 @@ function startWatchingSubagentFile(
             }
           }
         } catch { /* skip unparseable subagent transcript lines */ }
-      }
+      })
       state.fileSize = size
     }
   } catch (err) { log.debug('Subagent initial read failed:', err) }
-
-  if (state.finished) {
-    // Already done when we found it — history only, nothing to show or tail.
-    state.spawnEmitted = true
-    return
-  }
 
   log.info(`Tailing subagent: ${path.basename(filePath)} as "${agentName}" (session ${sessionId.slice(0, SESSION_ID_DISPLAY)})`)
 

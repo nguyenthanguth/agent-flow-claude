@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { readNewFileLines, completeLinesSize } from '../src/core/fs-utils'
+import { readNewFileLines, completeLinesSize, forEachLine } from '../src/core/fs-utils'
 
 describe('readNewFileLines', () => {
   let dir: string
@@ -88,6 +88,26 @@ describe('readNewFileLines', () => {
 
   it('returns null when the file does not exist', () => {
     assert.equal(readNewFileLines(path.join(dir, 'missing.jsonl'), 0), null)
+  })
+})
+
+describe('forEachLine', () => {
+  it('yields every line across chunk boundaries without splitting characters', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-flow-fs-utils-'))
+    const file = path.join(dir, 'big.jsonl')
+    // ~6 MB: crosses the 4 MB chunk size, with multi-byte text on every line
+    const lines = Array.from({ length: 60_000 }, (_, i) => `{"i":${i},"t":"chào 日本 ${'x'.repeat(i % 97)}"}`)
+    fs.writeFileSync(file, lines.join('\r\n') + '\r\npartial-no-newline')
+    const size = fs.statSync(file).size
+    assert.ok(size > 4 * 1024 * 1024)
+
+    const seen: string[] = []
+    forEachLine(file, completeLinesSize(file, size), (l) => seen.push(l))
+    assert.equal(seen.length, lines.length)
+    assert.equal(seen[0], lines[0])
+    assert.equal(seen[seen.length - 1], lines[lines.length - 1])
+    assert.ok(seen.every((l, i) => l === lines[i]))
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 })
 

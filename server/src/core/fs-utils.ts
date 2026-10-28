@@ -20,17 +20,73 @@ export function readFileChunk(filePath: string, offset: number, length: number):
   return readBytes(filePath, offset, length).toString('utf-8')
 }
 
+/** Chunk size for scanning large transcripts. Session files can grow past
+ *  700 MB — far beyond what fits in one JS string (~512 MB) — so they are
+ *  never read whole. */
+const SCAN_CHUNK_BYTES = 4 * 1024 * 1024
+
 /**
  * Size of the file's first `size` bytes up to and including the last newline —
  * i.e. how much of it is complete lines. A JSONL writer may be mid-line, and
  * anything after the last newline must be read again once it is finished.
+ * Searches backwards from `size`, so only the tail of the file is read.
  */
 export function completeLinesSize(filePath: string, size: number): number {
   if (size <= 0) return 0
   try {
-    return readBytes(filePath, 0, size).lastIndexOf(0x0a) + 1
+    const fd = fs.openSync(filePath, 'r')
+    try {
+      const buffer = Buffer.alloc(Math.min(SCAN_CHUNK_BYTES, size))
+      let end = size
+      while (end > 0) {
+        const start = Math.max(0, end - buffer.length)
+        const read = fs.readSync(fd, buffer, 0, end - start, start)
+        const idx = buffer.subarray(0, read).lastIndexOf(0x0a)
+        if (idx !== -1) return start + idx + 1
+        end = start
+      }
+      return 0
+    } finally {
+      fs.closeSync(fd)
+    }
   } catch {
     return 0
+  }
+}
+
+/**
+ * Call `onLine` for every complete line in the file's first `size` bytes,
+ * reading in fixed-size chunks so files of any size can be scanned.
+ * Lines are split on raw bytes, so a UTF-8 character is never cut in half.
+ */
+export function forEachLine(filePath: string, size: number, onLine: (line: string) => void): void {
+  const fd = fs.openSync(filePath, 'r')
+  try {
+    const chunk = Buffer.alloc(Math.min(SCAN_CHUNK_BYTES, Math.max(size, 1)))
+    let carry: Buffer = Buffer.alloc(0)
+    let offset = 0
+    while (offset < size) {
+      const read = fs.readSync(fd, chunk, 0, Math.min(chunk.length, size - offset), offset)
+      if (read <= 0) break
+      offset += read
+      const data = carry.length ? Buffer.concat([carry, chunk.subarray(0, read)]) : chunk.subarray(0, read)
+      let start = 0
+      let nl = data.indexOf(0x0a, start)
+      while (nl !== -1) {
+        const line = data.toString('utf-8', start, nl > start && data[nl - 1] === 0x0d ? nl - 1 : nl)
+        if (line) onLine(line)
+        start = nl + 1
+        nl = data.indexOf(0x0a, start)
+      }
+      // Copy: `data` may alias `chunk`, which the next read overwrites
+      carry = Buffer.from(data.subarray(start))
+    }
+    if (carry.length) {
+      const line = carry.toString('utf-8')
+      if (line) onLine(line)
+    }
+  } finally {
+    fs.closeSync(fd)
   }
 }
 
