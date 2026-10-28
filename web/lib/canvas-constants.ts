@@ -1,25 +1,47 @@
 // ─── Model families ──────────────────────────────────────────────────────────
 
-/** Single source of truth for Claude model families. Display names
- *  (formatModelName in utils.ts), context-window sizes, and cost rates all
- *  derive from this table — add new families here and nowhere else.
- *  Rates are blended $/M-token (0.75 × input + 0.25 × output per-MTok). */
-export const CLAUDE_FAMILIES: ReadonlyArray<{ name: string; context: number; rate: number }> = [
-  { name: 'fable',  context: 1_000_000, rate: 20 }, // $10 in / $50 out
-  { name: 'mythos', context: 1_000_000, rate: 20 }, // $10 in / $50 out
-  { name: 'opus',   context: 1_000_000, rate: 10 }, // $5 in / $25 out
-  { name: 'sonnet', context: 1_000_000, rate: 6 },  // $3 in / $15 out
-  { name: 'haiku',  context: 200_000,   rate: 2 },  // $1 in / $5 out
+/** Claude model families, used for display names (formatModelName in utils.ts)
+ *  and as the default context window. Add new families here. */
+export const CLAUDE_FAMILIES: ReadonlyArray<{ name: string; context: number }> = [
+  { name: 'fable',  context: 1_000_000 },
+  { name: 'mythos', context: 1_000_000 },
+  { name: 'opus',   context: 1_000_000 },
+  { name: 'sonnet', context: 1_000_000 },
+  { name: 'haiku',  context: 1_000_000 },
 ]
 
 /** Regex alternation fragment of all Claude family names (e.g. 'fable|mythos|…'). */
 export const CLAUDE_FAMILY_ALTERNATION = CLAUDE_FAMILIES.map(f => f.name).join('|')
 
-/** Context window size by model family. Patterns are checked in order;
- *  first match wins. Matched against lower-cased model IDs. */
+/** Context window size by model. Patterns are checked in order; first match
+ *  wins. Matched against lower-cased model IDs. Older generations first. */
 export const MODEL_FAMILY_CONTEXT: ReadonlyArray<{ pattern: RegExp; size: number }> = [
+  { pattern: /haiku-4/, size: 200_000 },
   ...CLAUDE_FAMILIES.map(f => ({ pattern: new RegExp(`${f.name}-\\d`), size: f.context })),
 ]
+
+/** API list prices in $ per million tokens (Anthropic first-party, as of
+ *  2026-10-06). Cache writes are priced from input: 1.25× for 5-minute,
+ *  2× for 1-hour entries. Patterns are checked in order; first match wins. */
+export interface ModelPricing {
+  input: number
+  output: number
+  cacheRead: number
+  /** Higher rates once a prompt passes `threshold` tokens */
+  longContext?: { threshold: number; input: number; output: number }
+}
+export const MODEL_PRICING: ReadonlyArray<{ pattern: RegExp; price: ModelPricing }> = [
+  { pattern: /(fable|mythos)-5-1/, price: { input: 10, output: 50, cacheRead: 0.25 } },
+  { pattern: /(fable|mythos)-\d/, price: { input: 10, output: 50, cacheRead: 1 } },
+  { pattern: /opus-5-5/, price: { input: 4, output: 20, cacheRead: 0.2 } },
+  { pattern: /opus-\d/, price: { input: 5, output: 25, cacheRead: 0.5 } },
+  { pattern: /sonnet-5/, price: { input: 2, output: 10, cacheRead: 0.2 } },
+  { pattern: /sonnet-\d/, price: { input: 3, output: 15, cacheRead: 0.3 } },
+  { pattern: /haiku-5/, price: { input: 0.1, output: 0.5, cacheRead: 0.01, longContext: { threshold: 100_000, input: 0.5, output: 2.5 } } },
+  { pattern: /haiku-\d/, price: { input: 1, output: 5, cacheRead: 0.1 } },
+]
+/** Used for unknown models (Sonnet-class) */
+export const DEFAULT_PRICING: ModelPricing = { input: 2, output: 10, cacheRead: 0.2 }
 /** Used when no family pattern matches (unknown model). */
 export const DEFAULT_CONTEXT_SIZE = 200_000
 /** Used when no model ID is available at all. */
@@ -183,16 +205,6 @@ export function getDiscoveryCardDimensions(label: string, contentLines: string[]
 
 export const TOOL_MAX_CARD_W = 240
 
-/** Blended $/M-token rate by model family (0.75 × input + 0.25 × output
- *  per-MTok pricing, the same weighting the original Sonnet-class rate used).
- *  Claude rates derive from CLAUDE_FAMILIES. Patterns are checked in order;
- *  first match wins. Matched against lower-cased model IDs. */
-export const MODEL_FAMILY_COST: ReadonlyArray<{ pattern: RegExp; rate: number }> = [
-  ...CLAUDE_FAMILIES.map(f => ({ pattern: new RegExp(`${f.name}-\\d`), rate: f.rate })),
-]
-
-/** Blended $/M-token fallback rate for unknown models (Sonnet-class) */
-export const COST_RATE = 6
 
 // ─── Agent drawing constants ────────────────────────────────────────────────
 
@@ -211,6 +223,8 @@ export const AGENT_DRAW = {
   shadowOffsetY: 5,
   /** Agent name label Y offset from agent radius */
   labelYOffset: 10,
+  /** Status line Y offset below the name label */
+  statusYOffset: 17,
   /** Agent name label width multiplier of radius */
   labelWidthMultiplier: 5,
   /** Scanline gradient half-height */
@@ -247,8 +261,8 @@ export const CONTEXT_BAR = {
   /** Bar width multiplier of radius */
   widthMultiplier: 2.6,
   barHeight: 4,
-  /** Y offset from agent radius */
-  yOffset: 32,
+  /** Y offset from agent radius (below the name and status lines) */
+  yOffset: 48,
   borderRadius: 2,
   /** Font for token count label */
   fontSize: 9.5,

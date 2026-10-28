@@ -16,6 +16,7 @@ import { TranscriptParser } from './core/transcript-parser'
 import { readNewFileLines, completeLinesSize, foldPathCase } from './core/fs-utils'
 import { scanSubagentsDir, pollSubagent } from './core/subagent-watcher'
 import { appendCapped } from './event-buffer'
+import { trackingFor, scaledBreakdown } from './core/usage'
 import {
   INACTIVITY_TIMEOUT_MS, SCAN_INTERVAL_MS, ACTIVE_SESSION_AGE_S, POLL_FALLBACK_MS,
   SESSION_ID_DISPLAY, SYSTEM_PROMPT_BASE_TOKENS, ORCHESTRATOR_NAME,
@@ -93,13 +94,14 @@ function elapsed(sessionId?: string): number {
   return 0
 }
 
+/** Context size for one agent: the real number from the API's usage when
+ *  known, with the estimated split by kind scaled to match it. */
 function emitContextUpdate(agentName: string, session: WatchedSession, sessionId?: string) {
-  const bd = session.contextBreakdown
-  const total = bd.systemPrompt + bd.userMessages + bd.toolResults + bd.reasoning + bd.subagentResults
+  const { tokens, breakdown } = scaledBreakdown(trackingFor(session, agentName))
   broadcastEvent({
     time: elapsed(sessionId),
     type: 'context_update',
-    payload: { agent: agentName, tokens: total, breakdown: { ...bd } },
+    payload: { agent: agentName, tokens, breakdown },
     sessionId,
   })
 }
@@ -124,9 +126,16 @@ const watcherDelegate = {
 }
 
 function spawnOrchestrator(session: WatchedSession, time: number) {
+  // Attaching mid-turn: the turn in progress may hold only tool results, so no
+  // replayed message would show the agent as busy — say so on the spawn.
+  const working = session.fileSize > 0 && !trackingFor(session, ORCHESTRATOR_NAME).turnEnd
   broadcastEvent({
     time, type: 'agent_spawn',
-    payload: { name: ORCHESTRATOR_NAME, isMain: true, task: session.label, ...(session.model ? { model: session.model } : {}) },
+    payload: {
+      name: ORCHESTRATOR_NAME, isMain: true, task: session.label,
+      ...(session.model ? { model: session.model } : {}),
+      ...(working ? { working: true } : {}),
+    },
     sessionId: session.sessionId,
   })
 }
@@ -154,7 +163,8 @@ function resetInactivityTimer(sessionId: string) {
     broadcastEvent({
       time: elapsed(sessionId),
       type: 'agent_idle',
-      payload: { name: ORCHESTRATOR_NAME },
+      // A turn that ended normally keeps saying so; otherwise the session just went quiet
+      payload: { name: ORCHESTRATOR_NAME, reason: trackingFor(session, ORCHESTRATOR_NAME).turnEnd ?? 'inactive' },
       sessionId,
     })
     broadcastSessionLifecycle('ended', sessionId, session.label)
@@ -195,6 +205,20 @@ function watchSession(sessionId: string, filePath: string) {
   spawnOrchestrator(session, 0)
   emitContextUpdate(ORCHESTRATOR_NAME, session, sessionId)
   parser.emitCatchUpEntries(catchUpEntries, session, sessionId)
+
+  // History from prescan: what the session has cost so far, and whether its
+  // last turn already ended (then Claude is waiting for the user)
+  const orchestrator = trackingFor(session, ORCHESTRATOR_NAME)
+  if (orchestrator.counted.size > 0) {
+    broadcastEvent({
+      time: 0, type: 'usage',
+      payload: { agent: ORCHESTRATOR_NAME, ...(session.model ? { model: session.model } : {}), ...orchestrator.totals },
+      sessionId,
+    })
+  }
+  if (orchestrator.turnEnd) {
+    broadcastEvent({ time: 0, type: 'agent_idle', payload: { name: ORCHESTRATOR_NAME, reason: orchestrator.turnEnd }, sessionId })
+  }
 
   try {
     session.fileWatcher = fs.watch(filePath, (eventType) => {

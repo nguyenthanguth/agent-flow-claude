@@ -16,6 +16,7 @@ export type AgentEventType =
   | 'tool_call_end'
   | 'subagent_dispatch'
   | 'subagent_return'
+  | 'usage'
   | 'error'
 
 export interface AgentEvent {
@@ -53,6 +54,11 @@ export interface TranscriptEntry {
   message: {
     role: string
     model?: string
+    /** API message id — shared by every entry written for one response */
+    id?: string
+    /** API usage for the request that produced this response */
+    usage?: unknown
+    stop_reason?: string | null
     content: Array<TranscriptContentBlock> | string
   }
 }
@@ -181,4 +187,6 @@ export interface WatchedSession {
     reasoning: number
     subagentResults: number
   }
+  /** Per-agent context, usage and turn state (see usage.ts → trackingFor) */
+  agentTracking?: Map<string, import('./usage').AgentTracking>
 }

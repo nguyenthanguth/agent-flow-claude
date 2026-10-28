@@ -30,4 +30,15 @@ describe('appendCapped', () => {
     const times = buf.map(e => e.time)
     assert.deepEqual(times, [...times].sort((a, b) => a - b))
   })
+
+  it('folds trimmed usage into one total per agent, so cost survives a reload', () => {
+    let buf: AgentEvent[] = []
+    const usage = (agent: string, n: number): AgentEvent => ({ time: n, type: 'usage', payload: { agent, input: 1, output: 2 }, sessionId: 's' })
+    for (let i = 0; i < 300; i++) buf = appendCapped(buf, i % 3 === 0 ? usage(i % 2 ? 'a' : 'b', i) : ev('message', i), 100)
+
+    const sum = (agent: string, f: string) => buf.filter(e => e.type === 'usage' && e.payload.agent === agent)
+      .reduce((s, e) => s + Number(e.payload[f]), 0)
+    assert.equal(sum('a', 'input') + sum('b', 'input'), 100)
+    assert.equal(sum('a', 'output') + sum('b', 'output'), 200)
+  })
 })

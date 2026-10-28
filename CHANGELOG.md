@@ -2,6 +2,13 @@
 
 ## Unreleased (fork)
 
+- **Real context, cost and status** — read from the API `usage` Claude Code records on every response instead of estimated from character counts
+  - Fix: context was underestimated about 4× (169k shown for a 680k context) and never went down after a compaction. It is now the real size of the latest request, per agent; the split by kind stays an estimate, scaled to the real total
+  - Fix: subagents showed the whole session's context (169k / 200k for a 19k Haiku subagent)
+  - Cost is the session's requests at API list prices (input, output, cache reads, 5-minute and 1-hour cache writes, per model, Haiku 5.5 long-context rates), including history from before Agent Flow attached. Prices updated to the current list (Opus 5.5 $4/$20, Sonnet 5.5 $2/$10, Haiku 5.5 $0.10/$0.50, Fable 5.1 $10/$50); Haiku 4.5 context is 200K
+  - Every agent shows a status line: Thinking, Running <tool>, Done, and for the main agent *Waiting for you* once its turn ends (`stop_reason: end_turn`), *Interrupted* after Esc, plus how many subagents are still working. Previously the main agent looked busy until a 5-minute idle timeout
+  - Session tabs use Claude Code's generated title (`ai-title`) instead of the truncated first prompt
+  - The top bar shows the main agent's context and the session cost
 - Fix: sessions with very large transcripts (a 748 MB session file) failed to attach with `ERR_STRING_TOO_LONG`, because the whole file was read into one string. Transcripts are now streamed in 4 MB chunks, only the session label and the current turn are kept in memory, and finished subagents are no longer read at all. The 748 MB session attaches in about 3 s with ~110 MB peak memory
 - **Global install**: `npm install -g <release .tgz>` (or `pnpm install-global` from source), then run `agent-flow-claude` in any project folder. Tagging `v*` publishes a GitHub Release with the tarball. New `--version` flag; `-v` now means `--version` (use `--verbose` for event logs)
 - **Renamed to agent-flow-claude** (based on Agent Flow). The CLI is `agent-flow-claude` (`server/dist/agent-flow-claude.js`) and the workspace variable is `AGENT_FLOW_CLAUDE_WORKSPACE`. CI uploads a ready-to-run build as an artifact

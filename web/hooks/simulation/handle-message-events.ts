@@ -76,7 +76,8 @@ export function handleContextUpdate(
       tokensUsed: tokens,
       tokensMax: tokensMaxOverride ?? agent.tokensMax,
       contextBreakdown: breakdown || agent.contextBreakdown,
-      state: agent.state === 'complete' ? 'complete' : 'thinking'
+      // Context updates don't change what the agent is doing: one is sent at
+      // the end of every turn too, when the agent is waiting, not thinking.
     })
   }
 }

@@ -25,6 +25,7 @@ import {
 import { summarizeInput, summarizeResult, extractInputData, detectError, buildDiscovery } from './tool-summarizer'
 import { estimateTokensFromContent, estimateTokensFromText } from './token-estimator'
 import { createLogger } from './logger'
+import { trackingFor, parseUsage, recordUsage, AgentTracking } from './usage'
 
 const log = createLogger('TranscriptParser')
 
@@ -134,6 +135,13 @@ function taskNotificationText(entry: Record<string, unknown>): string {
   return ''
 }
 
+/** Claude Code writes this as a user entry when you press Esc mid-turn */
+const INTERRUPTED_PREFIX = '[Request interrupted'
+
+function isInterruption(content: TranscriptEntry['message']['content']): boolean {
+  return userContentText(content).startsWith(INTERRUPTED_PREFIX)
+}
+
 export class TranscriptParser {
   /** Per-subagent dedup state for inline progress events, keyed by parentToolUseID */
   private inlineSubagentState = new Map<string, {
@@ -195,6 +203,12 @@ export class TranscriptParser {
     const notification = parseTaskNotification(taskNotificationText(parsed))
     if (notification) { this.handleTaskNotification(notification, sessionId) }
 
+    // Claude Code's own session title — a better tab label than the first prompt
+    if (parsed.type === 'ai-title' && typeof parsed.aiTitle === 'string' && sessionId) {
+      this.applyAiTitle(parsed.aiTitle, sessionId)
+      return
+    }
+
     // Only process actual conversation entries (user/assistant turns)
     if (parsed.type !== 'user' && parsed.type !== 'assistant') {
       return
@@ -232,6 +246,23 @@ export class TranscriptParser {
       }, sessionId)
     }
 
+    // Real token usage and turn state (usage.ts)
+    const tracking = session ? trackingFor(session, agentName) : undefined
+    if (tracking && entry.type === 'assistant') {
+      const usage = parseUsage(msg.usage)
+      const delta = usage ? recordUsage(tracking, msg.id, usage) : null
+      if (delta) {
+        this.delegate.emit({
+          time: this.delegate.elapsed(sessionId),
+          type: 'usage',
+          payload: { agent: agentName, ...(isRealModelId(msg.model) ? { model: msg.model } : {}), ...delta },
+        }, sessionId)
+      }
+      tracking.turnEnd = msg.stop_reason === 'end_turn' ? 'waiting' : undefined
+    } else if (tracking && entry.type === 'user') {
+      tracking.turnEnd = isInterruption(msg.content) ? 'interrupted' : undefined
+    }
+
     // Dedup set for messages (context compression replays old messages)
     const seenMsgs = ctxSeenMessages ?? session?.seenMessageHashes
 
@@ -245,7 +276,7 @@ export class TranscriptParser {
           if (seenMsgs && seenMsgs.has(hash)) { /* skip duplicate */ }
           else {
             seenMsgs?.add(hash)
-            if (session) { session.contextBreakdown.userMessages += estimateTokensFromText(text) }
+            if (tracking) { tracking.breakdown.userMessages += estimateTokensFromText(text) }
             this.delegate.emit({
               time: this.delegate.elapsed(sessionId),
               type: 'message',
@@ -255,6 +286,7 @@ export class TranscriptParser {
         }
       }
       if (session) { this.delegate.emitContextUpdate(agentName, session, sessionId) }
+      this.emitTurnEnd(agentName, tracking, sessionId)
       return
     }
 
@@ -279,6 +311,30 @@ export class TranscriptParser {
     }
 
     if (session) { this.delegate.emitContextUpdate(agentName, session, sessionId) }
+    this.emitTurnEnd(agentName, tracking, sessionId)
+  }
+
+  /** The main agent finished its turn (or was interrupted) and now waits for
+   *  the user. Emitted last, after this entry's message and context events,
+   *  so nothing for the same entry flips it back to busy. */
+  private emitTurnEnd(agentName: string, tracking: AgentTracking | undefined, sessionId?: string): void {
+    if (agentName !== ORCHESTRATOR_NAME || !tracking?.turnEnd) return
+    this.delegate.emit({
+      time: this.delegate.elapsed(sessionId),
+      type: 'agent_idle',
+      payload: { name: agentName, reason: tracking.turnEnd },
+    }, sessionId)
+  }
+
+  /** Use Claude Code's generated title as the session label */
+  private applyAiTitle(title: string, sessionId: string): void {
+    const session = this.delegate.getSession(sessionId)
+    if (!session) return
+    const label = this.truncateLabel(title)
+    if (!label || label === session.label) return
+    session.label = label
+    session.labelSet = true
+    this.delegate.fireSessionLifecycle({ type: 'updated', sessionId, label })
   }
 
   /** Process a text block — dedup, track tokens, emit message event */
@@ -301,8 +357,9 @@ export class TranscriptParser {
     seenMsgs?.add(hash)
 
     if (session) {
-      if (emitRole === 'user') { session.contextBreakdown.userMessages += estimateTokensFromText(text) }
-      else { session.contextBreakdown.reasoning += estimateTokensFromText(text) }
+      const bd = trackingFor(session, agentName).breakdown
+      if (emitRole === 'user') { bd.userMessages += estimateTokensFromText(text) }
+      else { bd.reasoning += estimateTokensFromText(text) }
     }
     this.delegate.emit({
       time: this.delegate.elapsed(sessionId),
@@ -330,7 +387,7 @@ export class TranscriptParser {
     seenMsgs?.add(hash)
 
     // Reasoning tokens are unknown for redacted blocks — skip breakdown update
-    if (session && thinking) { session.contextBreakdown.reasoning += estimateTokensFromText(thinking) }
+    if (session && thinking) { trackingFor(session, agentName).breakdown.reasoning += estimateTokensFromText(thinking) }
     this.delegate.emit({
       time: this.delegate.elapsed(sessionId),
       type: 'message',
@@ -403,10 +460,11 @@ export class TranscriptParser {
     if (sessionId) {
       const session = this.delegate.getSession(sessionId)
       if (session) {
+        const bd = trackingFor(session, agentName).breakdown
         if (toolName === 'Task' || toolName === 'Agent') {
-          session.contextBreakdown.subagentResults += tokenCost
+          bd.subagentResults += tokenCost
         } else {
-          session.contextBreakdown.toolResults += tokenCost
+          bd.toolResults += tokenCost
         }
       }
     }
@@ -561,6 +619,8 @@ export class TranscriptParser {
     let labelEntry: TranscriptEntry | null = null
     let currentTurn: TranscriptEntry[] = []
     let entryCount = 0
+    let aiTitle: string | null = null
+    const orchestrator = trackingFor(session, ORCHESTRATOR_NAME)
     try {
       // Read only up to `size` bytes — the file may have grown since stat.
       // Reading beyond would add tool_use IDs to the dedup set that haven't
@@ -635,6 +695,19 @@ export class TranscriptParser {
           if (entry.type === 'assistant' && isRealModelId(entry.message?.model) && !session.model) {
             session.model = entry.message.model
           }
+          if ((entry as { type?: string }).type === 'ai-title') {
+            const title = (entry as { aiTitle?: unknown }).aiTitle
+            if (typeof title === 'string' && title.trim()) { aiTitle = title }
+            return
+          }
+          // Real usage and how the last turn ended (orchestrator — this is the main transcript)
+          if (entry.type === 'assistant' && entry.message) {
+            const usage = parseUsage(entry.message.usage)
+            if (usage) { recordUsage(orchestrator, entry.message.id, usage) }
+            orchestrator.turnEnd = entry.message.stop_reason === 'end_turn' ? 'waiting' : undefined
+          } else if (entry.type === 'user' && entry.message) {
+            orchestrator.turnEnd = isInterruption(entry.message.content) ? 'interrupted' : undefined
+          }
           // Keep the label candidate and the entries since the last user entry
           if (entry.type === 'user' || entry.type === 'assistant') {
             entryCount++
@@ -644,6 +717,10 @@ export class TranscriptParser {
         } catch (err) { log.debug('Skipping unparseable transcript line:', err) }
       })
       log.info(`Pre-scanned ${session.seenToolUseIds.size} existing tool_use IDs, ${entryCount} entries total`)
+      if (aiTitle) {
+        session.label = this.truncateLabel(aiTitle)
+        session.labelSet = true
+      }
 
       // Label entry first, current turn last: emitCatchUpEntries replays from the last user entry
       return labelEntry && !currentTurn.includes(labelEntry) ? [labelEntry, ...currentTurn] : currentTurn

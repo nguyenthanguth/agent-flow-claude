@@ -178,13 +178,46 @@ function drawCenterIcon(ctx: CanvasRenderingContext2D, agent: Agent, r: number, 
   ctx.fillText(initial, agent.x, agent.y + 1)
 }
 
-function drawAgentLabel(ctx: CanvasRenderingContext2D, agent: Agent, r: number, emphasis: boolean) {
+/** One-line status shown under the agent's name */
+export function agentStatusText(agent: Agent, workingChildren: number): string {
+  switch (agent.state) {
+    case 'thinking': return 'Thinking'
+    case 'tool_calling': return agent.currentTool ? `Running ${agent.currentTool}` : 'Running a tool'
+    case 'waiting_permission': return 'Needs permission'
+    case 'complete': return 'Done'
+    case 'error': return 'Error'
+    case 'paused': return 'Paused'
+    case 'idle': {
+      const base = agent.idleReason === 'waiting' ? 'Waiting for you'
+        : agent.idleReason === 'interrupted' ? 'Interrupted'
+        : 'Idle'
+      if (workingChildren === 0) return base
+      return `${base} · ${workingChildren} subagent${workingChildren > 1 ? 's' : ''} working`
+    }
+  }
+}
+
+function statusColor(agent: Agent): string {
+  if (agent.state === 'idle') {
+    return agent.idleReason === 'waiting' ? COLORS.holoBase
+      : agent.idleReason === 'interrupted' ? COLORS.waiting_permission
+      : COLORS.textMuted
+  }
+  return agent.state === 'complete' ? COLORS.textMuted : getStateColor(agent.state)
+}
+
+function drawAgentLabel(ctx: CanvasRenderingContext2D, agent: Agent, r: number, emphasis: boolean, workingChildren: number) {
+  const maxW = r * AGENT_DRAW.labelWidthMultiplier
+  const y = agent.y + r + AGENT_DRAW.labelYOffset
   ctx.font = `${agent.isMain ? 600 : 500} ${agent.isMain ? 13 : 12}px ${FONT_SANS}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  const label = truncateText(ctx, agent.isMain ? 'Claude' : agent.name, r * AGENT_DRAW.labelWidthMultiplier)
   ctx.fillStyle = emphasis ? COLORS.textPrimary : agent.state === 'complete' ? COLORS.textMuted : COLORS.textPrimary
-  ctx.fillText(label, agent.x, agent.y + r + AGENT_DRAW.labelYOffset)
+  ctx.fillText(truncateText(ctx, agent.isMain ? 'Claude' : agent.name, maxW), agent.x, y)
+
+  ctx.font = `10.5px ${FONT_SANS}`
+  ctx.fillStyle = statusColor(agent)
+  ctx.fillText(truncateText(ctx, agentStatusText(agent, workingChildren), maxW + 40), agent.x, y + AGENT_DRAW.statusYOffset)
 }
 
 function drawStatsOverlay(ctx: CanvasRenderingContext2D, agent: Agent, r: number) {
@@ -211,6 +244,12 @@ export function drawAgents(
   showStats: boolean,
   time: number,
 ) {
+  // Subagents still working — shown on the main agent while it waits
+  let workingSubagents = 0
+  for (const a of agents.values()) {
+    if (!a.isMain && isActive(a)) workingSubagents++
+  }
+
   for (const [id, agent] of agents) {
     const radius = agent.isMain ? NODE.radiusMain : NODE.radiusSub
     const color = getStateColor(agent.state)
@@ -228,7 +267,7 @@ export function drawAgents(
     drawHalo(ctx, agent, r, color, emphasis)
     drawBody(ctx, agent, r, color, emphasis, time)
     drawCenterIcon(ctx, agent, r, color)
-    drawAgentLabel(ctx, agent, r, emphasis)
+    drawAgentLabel(ctx, agent, r, emphasis, agent.isMain ? workingSubagents : 0)
 
     if (agent.isMain) drawContextRing(ctx, agent, r)
     if (agent.state !== 'complete') drawContextComposition(ctx, agent, r)

@@ -5,6 +5,7 @@ import {
 } from '@/lib/agent-types'
 import { COLORS } from '@/lib/colors'
 import { AGENT_SPAWN_DISTANCE } from '@/lib/canvas-constants'
+import { usageCost } from '@/lib/pricing'
 import { pushTimelineBlock, type ProcessEventContext, type MutableEventState } from './process-event'
 import { edgeId, asString, asBoolean } from './types'
 
@@ -19,6 +20,8 @@ export function handleAgentSpawn(
   const isMain = asBoolean(payload.isMain)
   const task = typeof payload.task === 'string' ? payload.task : undefined
   const model = typeof payload.model === 'string' ? payload.model : undefined
+  // Set by the server when it attaches to a turn that is still in progress
+  const initialState = payload.working === true ? 'thinking' as const : 'idle' as const
 
   // If the agent already exists (e.g. session resuming after inactivity),
   // reactivate it instead of replacing — preserves accumulated stats.
@@ -26,7 +29,7 @@ export function handleAgentSpawn(
   if (existing) {
     state.agents.set(name, {
       ...existing,
-      state: 'idle',
+      state: initialState,
       ...(task ? { task } : {}),
       ...(model ? { model, tokensMax: ctx.getContextWindowSize(model) } : {}),
     })
@@ -72,7 +75,7 @@ export function handleAgentSpawn(
   }
 
   const agent: Agent = {
-    id: name, name, state: 'idle',
+    id: name, name, state: initialState,
     parentId: parentId || null,
     tokensUsed: 0, tokensMax: ctx.getContextWindowSize(model),
     contextBreakdown: emptyContextBreakdown(),
@@ -175,9 +178,23 @@ export function handleAgentIdle(
   const idleAgent = state.agents.get(idleName)
   // The server sends agent_idle when a session goes quiet. The next message
   // or context_update brings the agent back to 'thinking' when it resumes.
-  if (idleAgent && idleAgent.state !== 'complete' && idleAgent.state !== 'idle') {
-    state.agents.set(idleName, { ...idleAgent, state: 'idle', currentTool: undefined })
+  const reason = payload.reason === 'waiting' || payload.reason === 'interrupted' || payload.reason === 'inactive'
+    ? payload.reason : 'inactive'
+  if (idleAgent && idleAgent.state !== 'complete') {
+    state.agents.set(idleName, { ...idleAgent, state: 'idle', idleReason: reason, currentTool: undefined })
   }
+}
+
+/** Add one API request's cost to the agent that made it */
+export function handleUsage(
+  payload: Record<string, unknown>,
+  state: MutableEventState,
+): void {
+  const name = asString(payload.agent)
+  const agent = state.agents.get(name)
+  if (!agent) return
+  const model = typeof payload.model === 'string' ? payload.model : agent.model
+  state.agents.set(name, { ...agent, costUsd: (agent.costUsd ?? 0) + usageCost(payload, model) })
 }
 
 export function handleModelDetected(

@@ -23,7 +23,8 @@ Real-time visualization of Claude Code sessions in your browser. Watch the main 
 - **Live agent graph**: the main agent, every subagent, their tool calls and messages, connected parent → child
 - **Subagents in real time**, including background ones and subagents that were already running when you opened the page
 - **Multiple sessions**: each active session in the project gets a tab
-- **Context usage**: token bars per agent and a context ring on the main agent, split into system, user, tool results, reasoning and subagent results
+- **Real context and cost**: each agent's context is the actual size Claude Code reports for its latest request (not an estimate), shown as a bar and, for the main agent, a ring split by kind. Cost is the session's requests at API list prices, cache reads and writes included
+- **Clear status**: Thinking, Running a tool, Waiting for you, Interrupted, Done — the main agent also shows how many subagents are still working
 - **Panels**: transcript (Chat), files touched, cost estimate, timeline
 - **Review mode**: pause and scrub back through the session
 - **Reload-safe**: every connection replays the full history, so refreshing never loses or duplicates events

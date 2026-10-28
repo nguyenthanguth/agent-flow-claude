@@ -31,6 +31,10 @@ export interface Agent {
   /** Model ID last reported for this agent (agent_spawn / model_detected).
    *  Drives context-window sizing and the per-family cost rate. */
   model?: string
+  /** API-priced cost of every request this agent made (from `usage` events) */
+  costUsd?: number
+  /** Why an idle agent is idle: its turn ended, it was interrupted, or the session went quiet */
+  idleReason?: 'waiting' | 'interrupted' | 'inactive'
   currentTool?: string
   task?: string
   spawnTime: number
@@ -158,6 +162,7 @@ export interface SimulationEvent {
     | 'subagent_dispatch'
     | 'subagent_return'
     | 'permission_requested'
+    | 'usage'
   payload: Record<string, unknown>
   sessionId?: string
 }

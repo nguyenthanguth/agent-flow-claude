@@ -214,10 +214,15 @@ export function AgentVisualizer() {
 
   useKeyboardShortcuts(keyboardActions)
 
-  const totalTokens = useMemo(() => {
-    let sum = 0
-    for (const a of agents.values()) sum += a.tokensUsed
-    return sum
+  // Main agent's current context (real size from the API) and the session's cost so far
+  const { contextTokens, totalCost } = useMemo(() => {
+    let context = 0
+    let cost = 0
+    for (const a of agents.values()) {
+      if (a.isMain) context = a.tokensUsed
+      cost += a.costUsd ?? 0
+    }
+    return { contextTokens: context, totalCost: cost }
   }, [agents])
 
   const selectedAgent = selection.selectedAgentId ? agents.get(selection.selectedAgentId) : null
@@ -413,7 +418,8 @@ export function AgentVisualizer() {
         connectionStatus={bridge.connectionStatus}
         isDemo={bridge.useMockData}
         agentCount={agents.size}
-        totalTokens={totalTokens}
+        contextTokens={contextTokens}
+        totalCost={totalCost}
         showFileAttention={showFileAttention}
         showTranscript={showTranscript}
         showCostOverlay={showCostOverlay}

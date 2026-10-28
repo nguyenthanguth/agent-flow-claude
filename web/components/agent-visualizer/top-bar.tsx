@@ -2,7 +2,6 @@ import { memo } from "react"
 import { Z } from "@/lib/agent-types"
 import { COLORS } from "@/lib/colors"
 import { formatTokens } from "@/lib/utils"
-import { agentCost } from "./canvas/draw-cost"
 import { SessionTabs } from "./session-tabs"
 import type { SessionInfo, ConnectionStatus } from "@/lib/bridge-types"
 
@@ -102,7 +101,10 @@ export interface TopBarProps {
   isDemo: boolean
   // Stats
   agentCount: number
-  totalTokens: number
+  /** Main agent's current context size */
+  contextTokens: number
+  /** Session cost so far at API list prices */
+  totalCost: number
   // Panel toggles
   showFileAttention: boolean
   showTranscript: boolean
@@ -118,7 +120,7 @@ export const TopBar = memo(function TopBar({
   sessions, selectedSessionId, sessionsWithActivity,
   onSelectSession, onCloseSession,
   connectionStatus, isDemo,
-  agentCount, totalTokens,
+  agentCount, contextTokens, totalCost,
   showFileAttention, showTranscript, showCostOverlay, showTimeline, isMuted,
   onTogglePanel, onToggleTimeline, onToggleMute,
 }: TopBarProps) {
@@ -153,8 +155,10 @@ export const TopBar = memo(function TopBar({
           <span style={{ color: COLORS.textPrimary }}>{agentCount}</span> agents
         </span>
         <span className="text-[12px] tabular-nums" style={{ color: COLORS.textDim }}>
-          <span style={{ color: COLORS.textPrimary }}>{formatTokens(totalTokens)}</span> tokens
-          <span className="ml-1.5" style={{ color: COLORS.costText }}>~${agentCost(totalTokens).toFixed(2)}</span>
+          <span style={{ color: COLORS.textPrimary }}>{formatTokens(contextTokens)}</span> context
+        </span>
+        <span className="text-[12px] tabular-nums" style={{ color: COLORS.costText }} title="Cost of this session's requests at API list prices">
+          ${totalCost < 10 ? totalCost.toFixed(2) : totalCost.toFixed(0)}
         </span>
       </div>
 
