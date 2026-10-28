@@ -87,7 +87,7 @@ Không có test DOM. Để xem UI thật, chạy `pnpm dev:web` rồi chụp b�
 - Conventional Commits: `fix:`, `feat:`, `refactor:`, `chore:`, `docs:`.
 - Thương hiệu: "Agent Flow" và logo là của Simon Patole (`TRADEMARK.md`). README phải luôn ghi rõ dự án *dựa trên* Agent Flow và không phải bản chính thức; không dùng logo gốc. Tên `agent-flow-claude` là lựa chọn của người dùng, dù đã được báo là có thể bị coi là dễ nhầm lẫn.
 - Fork đã khác upstream rất nhiều (bỏ `extension/`, `scripts/`, `app/`). Merge từ upstream chỉ nên cherry-pick các bản sửa parser liên quan (skill `sync-upstream`).
-- `.claude/` nằm trong `.gitignore`, nên agents và skills không được commit.
+- `.claude/agents/` và `.claude/skills/` được commit cùng repo; phần còn lại của `.claude/` (settings local…) vẫn bị ignore.
 
 ## Agent team
 

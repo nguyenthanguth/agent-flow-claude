@@ -5,8 +5,10 @@ dist
 *.tsbuildinfo
 .DS_Store
 
-# Claude Code
-.claude/
+# Claude Code — the agent team and skills are shared, local settings are not
+.claude/*
+!.claude/agents/
+!.claude/skills/
 
 # npm pack output and files copied in by the release workflow
 server/*.tgz
