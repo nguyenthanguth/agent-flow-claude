@@ -1,5 +1,3 @@
-"use client"
-
 import { memo } from "react"
 import { Z } from "@/lib/agent-types"
 import { COLORS } from "@/lib/colors"
@@ -84,7 +82,6 @@ export interface TopBarProps {
   onSelectSession: (id: string) => void
   onCloseSession: (id: string) => void
   // Connection
-  isVSCode: boolean
   connectionStatus: ConnectionStatus
   // Stats
   agentCount: number
@@ -103,7 +100,7 @@ export interface TopBarProps {
 export const TopBar = memo(function TopBar({
   sessions, selectedSessionId, sessionsWithActivity,
   onSelectSession, onCloseSession,
-  isVSCode, connectionStatus,
+  connectionStatus,
   agentCount, totalTokens,
   showFileAttention, showTranscript, showCostOverlay, showTimeline, isMuted,
   onTogglePanel, onToggleTimeline, onToggleMute,
@@ -128,7 +125,7 @@ export const TopBar = memo(function TopBar({
 
       {/* Right-side info/controls */}
       <div className="flex items-center gap-4 flex-shrink-0" style={{ color: COLORS.textMuted }}>
-        {isVSCode && <ConnectionIndicator status={connectionStatus} />}
+        <ConnectionIndicator status={connectionStatus} />
         <span>{agentCount} agents</span>
         <span>
           {formatTokens(totalTokens)} tokens

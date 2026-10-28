@@ -1,8 +1,6 @@
-"use client"
-
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react"
 import { useAgentSimulation } from "@/hooks/use-agent-simulation"
-import { useVSCodeBridge } from "@/hooks/use-vscode-bridge"
+import { useEventStream } from "@/hooks/use-event-stream"
 import { useSelectionState } from "@/hooks/use-selection-state"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { AgentCanvas } from "./canvas"
@@ -15,7 +13,6 @@ import { FileAttentionPanel } from "./file-attention-panel"
 import { TimelinePanel } from "./timeline-panel"
 import { AgentChatPanel } from "./chat-panel"
 import { SessionTranscriptPanel } from "./session-transcript-panel"
-import { OpenFileProvider } from "./tool-content-renderer"
 import { stopPropagationHandlers } from "./shared-ui"
 import { TimelineEvent, TIMING } from "@/lib/agent-types"
 import { COLORS } from "@/lib/colors"
@@ -26,7 +23,7 @@ import { TopBar } from "./top-bar"
 import { useAudioEffects } from "@/hooks/use-audio-effects"
 
 export function AgentVisualizer() {
-  const bridge = useVSCodeBridge()
+  const bridge = useEventStream()
 
   const {
     frameRef,
@@ -58,7 +55,6 @@ export function AgentVisualizer() {
     // Pass the ref that's updated synchronously in session-started handler,
     // so the animation frame never uses a stale filter value.
     sessionFilterRef: bridge.selectedSessionIdRef,
-    disable1MContext: bridge.disable1MContext,
   })
 
   const selection = useSelectionState({ agents, toolCalls, discoveries })
@@ -93,9 +89,18 @@ export function AgentVisualizer() {
   // frame can consume and discard events from pendingEventsRef.
   const sessionCacheRef = useRef<Map<string, { snapshot: ReturnType<typeof saveSnapshot>; eventCount: number }>>(new Map())
   const prevSelectedRef = useRef<string | null>(null)
+  const prevEpochRef = useRef(bridge.epoch)
   useLayoutEffect(() => {
+    if (bridge.epoch !== prevEpochRef.current) {
+      // Server reset (each (re)connect replays all history): cached snapshots
+      // are stale and the on-screen simulation must be rebuilt from scratch,
+      // even when the same session ends up selected again.
+      prevEpochRef.current = bridge.epoch
+      sessionCacheRef.current.clear()
+      prevSelectedRef.current = null
+      if (bridge.selectedSessionId === null) { restart(); return }
+    }
     if (bridge.selectedSessionId === null && prevSelectedRef.current !== null) {
-      // Bridge reset (panel reopened / relay restarted): cached snapshots are stale
       sessionCacheRef.current.clear()
       prevSelectedRef.current = null
       return
@@ -125,7 +130,7 @@ export function AgentVisualizer() {
 
       prevSelectedRef.current = bridge.selectedSessionId
     }
-  }, [bridge.selectedSessionId, restart, bridge.flushSessionEvents, saveSnapshot, restoreSnapshot, bridge.getSessionEventCount])
+  }, [bridge.epoch, bridge.selectedSessionId, restart, bridge.flushSessionEvents, saveSnapshot, restoreSnapshot, bridge.getSessionEventCount])
 
   // Timeline events — incremental: only processes new conversation messages
   const timelineCacheRef = useRef<{
@@ -250,14 +255,9 @@ export function AgentVisualizer() {
     }
   }, [bridge])
 
-  const openFile = useCallback((filePath: string, line?: number) => {
-    bridge.bridgeOpenFile(filePath, line)
-  }, [bridge])
-
   const isEmpty = agents.size === 0 && !bridge.useMockData
 
   return (
-    <OpenFileProvider value={bridge.isVSCode ? openFile : null}>
     <div className="h-screen w-screen relative overflow-hidden" style={{ background: COLORS.void }}>
       {/* Empty state when no demo and no live data */}
       {isEmpty && (
@@ -379,7 +379,6 @@ export function AgentVisualizer() {
         visible={showFileAttention}
         fileAttention={fileAttention}
         onClose={() => setShowFileAttention(false)}
-        onOpenFile={bridge.isVSCode ? openFile : undefined}
       />
 
       {/* Session transcript panel (slide-in from right) */}
@@ -404,7 +403,6 @@ export function AgentVisualizer() {
         sessionsWithActivity={bridge.sessionsWithActivity}
         onSelectSession={bridge.selectSession}
         onCloseSession={handleCloseSession}
-        isVSCode={bridge.isVSCode}
         connectionStatus={bridge.connectionStatus}
         agentCount={agents.size}
         totalTokens={totalTokens}
@@ -418,6 +416,5 @@ export function AgentVisualizer() {
         onToggleMute={handleToggleMute}
       />
     </div>
-    </OpenFileProvider>
   )
 }

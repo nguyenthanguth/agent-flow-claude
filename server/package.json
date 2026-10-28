@@ -1,0 +1,13 @@
+{
+  "name": "agent-flow-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time visualization of Claude Code sessions — server",
+  "bin": {
+    "agent-flow": "dist/agent-flow.js"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

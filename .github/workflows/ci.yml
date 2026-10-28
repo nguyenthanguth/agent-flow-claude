@@ -23,14 +23,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Root tests (scripts, app)
+      - name: Tests
         run: pnpm test
 
-      - name: Extension tests
-        run: pnpm --dir extension test
+      - name: Typecheck
+        run: pnpm typecheck
 
-      - name: Extension typecheck
-        run: pnpm --filter agent-flow run lint
-
-      - name: Web typecheck
-        run: pnpm --dir web exec tsc --noEmit
+      - name: Build
+        run: pnpm build

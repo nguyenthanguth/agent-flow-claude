@@ -1,0 +1,23 @@
+/**
+ * Agent Flow — real-time visualization of Claude Code sessions.
+ *
+ * Starts a local server that:
+ *   1. Watches the Claude Code transcripts of sessions in the current directory
+ *   2. Serves the visualizer UI and streams events via SSE
+ *   3. Opens the browser automatically
+ *
+ * Usage: agent-flow [--port <number>] [--no-open] [--verbose]
+ */
+import { parseArgs } from './args'
+import { startServer } from './server'
+
+const args = parseArgs(process.argv.slice(2))
+
+console.log('Agent Flow\n')
+
+startServer({
+  port: args.port,
+  openBrowser: args.open,
+  workspace: args.workspace ?? process.cwd(),
+  verbose: args.verbose,
+})
