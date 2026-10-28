@@ -18,10 +18,10 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { AgentEvent, SubagentState, WatchedSession, emitSubagentSpawn } from './protocol'
+import { AgentEvent, SubagentState, TranscriptEntry, WatchedSession, emitSubagentSpawn } from './protocol'
 import { SESSION_ID_DISPLAY, ORCHESTRATOR_NAME, ARGS_MAX, generateSubagentFallbackName, resolveSubagentChildName } from './constants'
 import { readNewFileLines, readFileChunk, completeLinesSize, forEachLine } from './fs-utils'
-import { TranscriptParser } from './transcript-parser'
+import { TranscriptParser, isInterruption } from './transcript-parser'
 import { createLogger } from './logger'
 
 const log = createLogger('SubagentWatcher')
@@ -181,6 +181,9 @@ function startWatchingSubagentFile(
   // is still active (has unmatched tool_use blocks = pending work).
   const pendingToolUseIds = new Set<string>()
   let recentlyWritten = false
+  // A killed subagent (Esc, TaskStop) ends with an interruption entry and keeps
+  // its unanswered tool_use, and its meta file never gets `finished`
+  let interrupted = false
   if (state.finished) {
     // Already done when we found it — history only, nothing to show or tail,
     // so don't read it (old subagent transcripts can be hundreds of MB).
@@ -199,8 +202,10 @@ function startWatchingSubagentFile(
         if (!line.trim()) return
         try {
           const raw: unknown = JSON.parse(line.trim())
-          const entry = raw as { message?: { content?: Array<{ type: string; id?: string; tool_use_id?: string }> } }
+          const entry = raw as { message?: { role?: string; content?: Array<{ type: string; id?: string; tool_use_id?: string }> } }
           if (raw && typeof raw === 'object' && entry.message && Array.isArray(entry.message.content)) {
+            if (entry.message.role === 'user' && isInterruption(entry.message.content as TranscriptEntry['message']['content'])) interrupted = true
+            else if (entry.message.role === 'assistant') interrupted = false
             for (const block of entry.message.content) {
               if (block.type === 'tool_use' && block.id) {
                 state.seenToolUseIds.add(block.id)
@@ -220,9 +225,10 @@ function startWatchingSubagentFile(
 
   // Spawn now if the subagent looks like it is still running: work in flight,
   // or written to recently (older meta files may lack `finished`, so "not
-  // finished" alone would resurrect every historical subagent). Anything else
-  // spawns lazily on its next write.
-  if (pendingToolUseIds.size > 0 || (recentlyWritten && state.fileSize > 0)) {
+  // finished" alone would resurrect every historical subagent). Anything else,
+  // including an interrupted subagent later resumed with SendMessage, spawns
+  // lazily on its next write.
+  if (!interrupted && (pendingToolUseIds.size > 0 || (recentlyWritten && state.fileSize > 0))) {
     spawnOnce(delegate, session, state, sessionId)
   }
 

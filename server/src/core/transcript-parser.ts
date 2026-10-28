@@ -138,7 +138,7 @@ function taskNotificationText(entry: Record<string, unknown>): string {
 /** Claude Code writes this as a user entry when you press Esc mid-turn */
 const INTERRUPTED_PREFIX = '[Request interrupted'
 
-function isInterruption(content: TranscriptEntry['message']['content']): boolean {
+export function isInterruption(content: TranscriptEntry['message']['content']): boolean {
   return userContentText(content).startsWith(INTERRUPTED_PREFIX)
 }
 

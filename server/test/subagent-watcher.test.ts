@@ -83,6 +83,17 @@ describe('subagent watcher', () => {
     assert.deepEqual(spawns(events), [])
   })
 
+  it('does not spawn a subagent that was interrupted mid-tool before we attached', () => {
+    const { events, delegate, parser, writeSubagent } = setup()
+    // Killed agents keep their unanswered tool_use and their meta never gets `finished`
+    writeSubagent('a1', { description: 'Killed review', toolUseId: 'toolu_1' }, [
+      pendingBash('t1'),
+      { type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } },
+    ])
+    scanSubagentsDir(delegate, parser, SESSION_ID)
+    assert.deepEqual(spawns(events), [])
+  })
+
   it('does not spawn twice when the parent transcript already spawned it', () => {
     const { session, events, delegate, parser, writeSubagent } = setup()
     session.spawnedSubagents.add('Review the diff')
