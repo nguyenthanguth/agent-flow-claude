@@ -25,6 +25,7 @@ Real-time visualization of Claude Code sessions in your browser. Watch the main 
 - **Multiple sessions**: each active session in the project gets a tab
 - **Real context and cost**: each agent's context is the actual size Claude Code reports for its latest request (not an estimate), shown as a bar and, for the main agent, a ring split by kind. Cost is the session's requests at API list prices, cache reads and writes included
 - **Clear status**: Thinking, Running a tool, Waiting for you, Interrupted, Done — the main agent also shows how many subagents are still working
+- **Plan usage bar**: your 5-hour session and weekly limits (when your plan has them) with reset times, like Claude Code's `/usage`, plus what this machine's transcripts used in the same windows
 - **Panels**: transcript (Chat), files touched, cost estimate, timeline
 - **Review mode**: pause and scrub back through the session
 - **Reload-safe**: every connection replays the full history, so refreshing never loses or duplicates events
@@ -70,6 +71,7 @@ Without installing, you can run a build directly: `node server/dist/agent-flow-c
 | `-w, --workspace <dir>` | Watch this project instead of the current directory (also `$AGENT_FLOW_CLAUDE_WORKSPACE`). Subfolders are included |
 | `-p, --port <number>` | Server port (default `3030`). Use a different port to watch two projects at once |
 | `--no-open` | Don't open the browser |
+| `--no-plan-usage` | Don't fetch plan limits (see [Privacy](#privacy)) |
 | `--verbose` | Log every event |
 | `-v, --version` | Print the version |
 
@@ -121,6 +123,12 @@ The Release workflow tests and builds, then publishes a GitHub Release with `age
 ### Windows
 
 Everything works from PowerShell, cmd or Git Bash. The repo's `.npmrc` enables pnpm's cross-platform script shell, so the POSIX-style scripts in `package.json` run under `cmd.exe` too.
+
+## Privacy
+
+agent-flow-claude reads Claude Code's files under `~/.claude` and never writes there. It listens only on `127.0.0.1` and sends no telemetry.
+
+The one network request it makes is for the plan usage bar: every 5 minutes it asks `api.anthropic.com/api/oauth/usage` for your limits, the same request Claude Code's `/usage` makes, using the login token Claude Code keeps in `~/.claude/.credentials.json`. The token is read fresh each time, never stored or refreshed, and sent nowhere else. The last result (percentages and reset times only) is cached in `~/.agent-flow-claude/plan-usage.json`. The endpoint is not a public API and may change; the bar then shows only local numbers. Start with `--no-plan-usage` to turn it off.
 
 ## Credits and license
 

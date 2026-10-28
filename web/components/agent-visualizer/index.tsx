@@ -420,6 +420,7 @@ export function AgentVisualizer() {
         agentCount={agents.size}
         contextTokens={contextTokens}
         totalCost={totalCost}
+        planUsage={bridge.planUsage}
         showFileAttention={showFileAttention}
         showTranscript={showTranscript}
         showCostOverlay={showCostOverlay}

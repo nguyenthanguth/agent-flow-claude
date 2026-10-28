@@ -16,6 +16,7 @@ import { TranscriptParser } from './core/transcript-parser'
 import { readNewFileLines, completeLinesSize, foldPathCase } from './core/fs-utils'
 import { scanSubagentsDir, pollSubagent } from './core/subagent-watcher'
 import { appendCapped } from './event-buffer'
+import { UsageMonitor } from './usage-monitor'
 import { trackingFor, scaledBreakdown } from './core/usage'
 import {
   INACTIVITY_TIMEOUT_MS, SCAN_INTERVAL_MS, ACTIVE_SESSION_AGE_S, POLL_FALLBACK_MS,
@@ -321,6 +322,8 @@ export interface Relay {
 export interface RelayOptions {
   workspace: string
   verbose?: boolean
+  /** Fetch plan limits (5-hour / weekly) with Claude Code's login. Default on. */
+  planUsage?: boolean
 }
 
 let relayCreated = false
@@ -338,6 +341,13 @@ export function createRelay(options: RelayOptions): Relay {
 
   scanForActiveSessions(workspace)
   const scanInterval = setInterval(() => scanForActiveSessions(workspace), SCAN_INTERVAL_MS)
+
+  // Usage bar: plan limits + usage across all local transcripts (not per session)
+  const usageMonitor = new UsageMonitor({
+    fetchPlan: options.planUsage !== false,
+    onUpdate: (usage) => broadcast({ type: 'plan-usage', usage }),
+  })
+  usageMonitor.start()
 
   // React to new transcripts immediately instead of waiting for the next scan
   const dirWatchers: fs.FSWatcher[] = []
@@ -368,6 +378,7 @@ export function createRelay(options: RelayOptions): Relay {
       // Every connection starts from a clean slate: a reconnecting client must
       // drop what it has, or the replay below would duplicate its events.
       sendSSE(res, { type: 'reset', reason: 'connected' })
+      if (usageMonitor.latest) sendSSE(res, { type: 'plan-usage', usage: usageMonitor.latest })
 
       const detected = [...sessions.values()].filter(s => s.sessionDetected)
       if (detected.length === 0) return
@@ -380,6 +391,7 @@ export function createRelay(options: RelayOptions): Relay {
 
     dispose() {
       clearInterval(scanInterval)
+      usageMonitor.dispose()
       for (const w of dirWatchers) w.close()
       for (const session of sessions.values()) {
         session.fileWatcher?.close()

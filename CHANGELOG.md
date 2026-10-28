@@ -2,6 +2,7 @@
 
 ## Unreleased (fork)
 
+- **Plan usage bar** in the top bar: percent used of the 5-hour session and weekly limits (only those your plan has), time to reset, and a details popover — the same data as Claude Code's `/usage`, fetched every 5 minutes with Claude Code's login (`--no-plan-usage` turns it off). The popover also shows this machine's usage in the same windows, across all projects and subagents, priced at API rates. The last good limits are cached, so a restart or a rate-limited refresh still shows them with their age
 - **Real context, cost and status** — read from the API `usage` Claude Code records on every response instead of estimated from character counts
   - Fix: context was underestimated about 4× (169k shown for a 680k context) and never went down after a compaction. It is now the real size of the latest request, per agent; the split by kind stays an estimate, scaled to the real total
   - Fix: subagents showed the whole session's context (169k / 200k for a 19k Haiku subagent)

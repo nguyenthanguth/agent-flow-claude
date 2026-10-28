@@ -13,12 +13,13 @@ interface ServerOptions {
   openBrowser: boolean
   workspace: string
   verbose?: boolean
+  planUsage?: boolean
 }
 
 export function startServer(options: ServerOptions) {
   const { port, openBrowser, workspace } = options
 
-  const relay = createRelay({ workspace, verbose: options.verbose })
+  const relay = createRelay({ workspace, verbose: options.verbose, planUsage: options.planUsage })
 
   const server = http.createServer((req, res) => {
     if (req.url === '/events') {

@@ -3,7 +3,8 @@ import { Z } from "@/lib/agent-types"
 import { COLORS } from "@/lib/colors"
 import { formatTokens } from "@/lib/utils"
 import { SessionTabs } from "./session-tabs"
-import type { SessionInfo, ConnectionStatus } from "@/lib/bridge-types"
+import { UsageBar } from "./usage-bar"
+import type { SessionInfo, ConnectionStatus, PlanUsageReport } from "@/lib/bridge-types"
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,8 @@ export interface TopBarProps {
   contextTokens: number
   /** Session cost so far at API list prices */
   totalCost: number
+  /** Plan limits (5-hour / weekly); null hides the usage bar */
+  planUsage: PlanUsageReport | null
   // Panel toggles
   showFileAttention: boolean
   showTranscript: boolean
@@ -120,7 +123,7 @@ export const TopBar = memo(function TopBar({
   sessions, selectedSessionId, sessionsWithActivity,
   onSelectSession, onCloseSession,
   connectionStatus, isDemo,
-  agentCount, contextTokens, totalCost,
+  agentCount, contextTokens, totalCost, planUsage,
   showFileAttention, showTranscript, showCostOverlay, showTimeline, isMuted,
   onTogglePanel, onToggleTimeline, onToggleMute,
 }: TopBarProps) {
@@ -161,6 +164,9 @@ export const TopBar = memo(function TopBar({
           ${totalCost < 10 ? totalCost.toFixed(2) : totalCost.toFixed(0)}
         </span>
       </div>
+
+      {/* Plan usage (5-hour / weekly limits) */}
+      <UsageBar report={planUsage} />
 
       {/* Panels */}
       <div className="flex items-center gap-0.5 h-9 px-1 rounded-xl flex-shrink-0" style={surface}>

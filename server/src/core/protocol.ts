@@ -44,6 +44,40 @@ export type ServerMessage =
   | { type: 'session-started'; session: SessionInfo }
   | { type: 'session-ended'; sessionId: string }
   | { type: 'session-updated'; sessionId: string; label: string }
+  | { type: 'plan-usage'; usage: PlanUsageReport }
+
+// ─── Plan usage (5-hour / weekly limits) ────────────────────────────────────
+
+export interface PlanLimit {
+  /** Stable key, e.g. "session:5-hour session" */
+  id: string
+  /** "session" (5-hour window) or "weekly" */
+  group: string
+  label: string
+  percent: number
+  severity: string
+  /** ms epoch */
+  resetsAt?: number
+  active: boolean
+}
+
+export interface UsageTotals {
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite5m: number
+  cacheWrite1h: number
+}
+
+export interface PlanUsageReport {
+  status: 'ok' | 'signed-out' | 'expired' | 'unavailable' | 'disabled'
+  plan?: string
+  limits: PlanLimit[]
+  fetchedAt: number
+  error?: string
+  /** Usage recorded in transcripts on this machine, per window and model */
+  windows: Array<{ group: string; since: number; byModel: Record<string, UsageTotals> }>
+}
 
 // ─── Transcript Types (from Claude Code JSONL files) ─────────────────────────
 

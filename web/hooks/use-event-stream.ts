@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { ConnectionStatus, AgentEvent, SessionInfo } from '@/lib/bridge-types'
+import type { ConnectionStatus, AgentEvent, SessionInfo, PlanUsageReport } from '@/lib/bridge-types'
 import { SimulationEvent } from '@/lib/agent-types'
 
 /** Demo mode plays the built-in mock scenario instead of connecting: open the UI with `?demo`. */
@@ -13,6 +13,7 @@ type ServerMessage =
   | { type: 'session-started'; session: SessionInfo }
   | { type: 'session-ended'; sessionId: string }
   | { type: 'session-updated'; sessionId: string; label: string }
+  | { type: 'plan-usage'; usage: PlanUsageReport }
 
 interface EventStreamResult {
   connectionStatus: ConnectionStatus
@@ -41,6 +42,8 @@ interface EventStreamResult {
   /** Increments on every server reset (each (re)connect). Consumers must drop
    *  per-session caches and restart the simulation when it changes. */
   epoch: number
+  /** Plan limits (5-hour / weekly) and local usage, null until the server sends them */
+  planUsage: PlanUsageReport | null
 }
 
 /**
@@ -56,6 +59,7 @@ export function useEventStream(): EventStreamResult {
   const pendingEventsRef = useRef<SimulationEvent[]>([])
   const [, setEventVersion] = useState(0) // trigger re-render on new events
   const [epoch, setEpoch] = useState(0)
+  const [planUsage, setPlanUsage] = useState<PlanUsageReport | null>(null)
 
   // Session state
   const [sessions, setSessions] = useState<SessionInfo[]>([])
@@ -183,6 +187,9 @@ export function useEventStream(): EventStreamResult {
         case 'session-ended':
           setSessions(prev => prev.map(s => s.id === msg.sessionId ? { ...s, status: 'completed' as const } : s))
           break
+        case 'plan-usage':
+          setPlanUsage(msg.usage)
+          break
       }
     }
 
@@ -260,5 +267,6 @@ export function useEventStream(): EventStreamResult {
     sessionsWithActivity,
     removeSession,
     epoch,
+    planUsage,
   }
 }

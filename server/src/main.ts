@@ -21,4 +21,5 @@ startServer({
   openBrowser: args.open,
   workspace: args.workspace ?? process.cwd(),
   verbose: args.verbose,
+  planUsage: args.planUsage,
 })

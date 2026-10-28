@@ -20,6 +20,7 @@ export function parseArgs(argv: string[]) {
   let port = DEFAULT_PORT
   let open = true
   let verbose = false
+  let planUsage = true
   const envWorkspace = process.env.AGENT_FLOW_CLAUDE_WORKSPACE
   let workspace = envWorkspace ? path.resolve(envWorkspace) : undefined
 
@@ -34,6 +35,8 @@ export function parseArgs(argv: string[]) {
       i++
     } else if (arg === '--no-open') {
       open = false
+    } else if (arg === '--no-plan-usage') {
+      planUsage = false
     } else if (arg === '--verbose') {
       verbose = true
     } else if (arg === '--version' || arg === '-v') {
@@ -50,6 +53,7 @@ Options:
                            (also $AGENT_FLOW_CLAUDE_WORKSPACE)
   -p, --port <number>      Port for the server (default: ${DEFAULT_PORT})
   --no-open                Don't open the browser automatically
+  --no-plan-usage          Don't fetch plan limits (5-hour / weekly) with Claude Code's login
   --verbose                Show detailed event logs
   -v, --version            Print the version
   -h, --help               Show this help message
@@ -58,5 +62,5 @@ Options:
     }
   }
 
-  return { port, open, verbose, workspace }
+  return { port, open, verbose, workspace, planUsage }
 }
