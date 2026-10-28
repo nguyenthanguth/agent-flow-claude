@@ -1,10 +1,10 @@
 {
-  "name": "agent-flow-server",
+  "name": "agent-flow-claude",
   "version": "1.0.0",
   "private": true,
-  "description": "Real-time visualization of Claude Code sessions — server",
+  "description": "Real-time visualization of Claude Code sessions and subagents (based on Agent Flow)",
   "bin": {
-    "agent-flow": "dist/agent-flow.js"
+    "agent-flow-claude": "dist/agent-flow-claude.js"
   },
   "license": "Apache-2.0",
   "engines": {

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Builds Agent Flow:
+ * Builds agent-flow-claude:
  *   1. Builds the web UI via Vite (into server/dist/webview/)
- *   2. Bundles the server entry via esbuild (into server/dist/agent-flow.js)
+ *   2. Bundles the server entry via esbuild (into server/dist/agent-flow-claude.js)
  */
 'use strict'
 
@@ -12,7 +12,7 @@ const path = require('path')
 
 const ROOT = path.join(__dirname, '..')
 
-console.log('Building Agent Flow...\n')
+console.log('Building agent-flow-claude...\n')
 
 console.log('[1/2] Building web UI...')
 execSync('pnpm exec vite build', {
@@ -26,10 +26,10 @@ esbuild.buildSync({
   bundle: true,
   platform: 'node',
   target: 'node20',
-  outfile: path.join(__dirname, 'dist', 'agent-flow.js'),
+  outfile: path.join(__dirname, 'dist', 'agent-flow-claude.js'),
   banner: { js: '#!/usr/bin/env node' },
   sourcemap: false,
   logLevel: 'warning',
 })
 
-console.log('\nDone! Run: node server/dist/agent-flow.js')
+console.log('\nDone! Run: node server/dist/agent-flow-claude.js')

@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -31,3 +36,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Ready-to-run build: unzip, then `node agent-flow-claude.js` (Node 20+, no install needed)
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-flow-claude
+          path: server/dist/
+          retention-days: 30

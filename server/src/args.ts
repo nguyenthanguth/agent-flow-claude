@@ -6,7 +6,7 @@ export function parseArgs(argv: string[]) {
   let port = DEFAULT_PORT
   let open = true
   let verbose = false
-  const envWorkspace = process.env.AGENT_FLOW_WORKSPACE
+  const envWorkspace = process.env.AGENT_FLOW_CLAUDE_WORKSPACE
   let workspace = envWorkspace ? path.resolve(envWorkspace) : undefined
 
   for (let i = 0; i < argv.length; i++) {
@@ -24,12 +24,12 @@ export function parseArgs(argv: string[]) {
       verbose = true
     } else if (arg === '--help' || arg === '-h') {
       console.log(`
-Usage: agent-flow [options]
+Usage: agent-flow-claude [options]
 
 Options:
   -p, --port <number>      Port for the server (default: ${DEFAULT_PORT})
   -w, --workspace <dir>    Project whose Claude Code sessions to watch
-                           (default: $AGENT_FLOW_WORKSPACE, then the current directory)
+                           (default: $AGENT_FLOW_CLAUDE_WORKSPACE, then the current directory)
   --no-open                Don't open the browser automatically
   -v, --verbose            Show detailed event logs
   -h, --help               Show this help message

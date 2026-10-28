@@ -1,154 +1,104 @@
-# Agent Flow
+# agent-flow-claude
 
-Real-time visualization of Claude Code agent orchestration. Watch your agents think, branch, and coordinate as they work. [Demo video here](https://www.youtube.com/watch?v=Ud6eDrFN-TA). 
+[![CI](https://github.com/nguyenthanguth/agent-flow-claude/actions/workflows/ci.yml/badge.svg)](https://github.com/nguyenthanguth/agent-flow-claude/actions/workflows/ci.yml)
 
-![Agent Flow visualization](https://res.cloudinary.com/dxlvclh9c/image/upload/v1773924941/screenshot_e7yox3.png)
+Real-time visualization of Claude Code sessions in your browser. Watch the main agent and its subagents think, call tools and hand results back, live, as an interactive graph.
 
-## Why Agent Flow?
+> **Based on [Agent Flow](https://github.com/patoles/agent-flow)** by Simon Patole. This is an independent fork, not the official project and not endorsed by its maintainers. It is reduced to one job: Claude Code in the browser.
 
-I built Agent Flow while developing [Antics](https://antics.gg), a game creation platform driven by AI agents. Debugging agent behavior was painful, so we made it visual. Now we're sharing it.
+![agent-flow-claude showing a Claude Code session with its tool calls and messages](docs/screenshot.png)
 
-Claude Code is powerful, but its execution is a black box — you see the final result, not the journey. Agent Flow makes the invisible visible:
+## What's different from Agent Flow
 
-- **Understand agent behavior** — See how Claude breaks down problems, which tools it reaches for, and how subagents coordinate
-- **Debug tool call chains** — When something goes wrong, trace the exact sequence of decisions and tool calls that led there
-- **See where time is spent** — Identify slow tool calls, unnecessary branching, or redundant work at a glance
-- **Learn by watching** — Build intuition for how to write better prompts by observing how Claude interprets and executes them
+| | Agent Flow | agent-flow-claude |
+|---|---|---|
+| Runs as | VS Code extension, `npx` app, dev server | One local server + browser UI |
+| Runtimes | Claude Code and Codex | Claude Code only |
+| Event source | Claude Code hooks + transcripts | Transcripts only — nothing is installed into Claude Code, `~/.claude/settings.json` is never touched |
+| Subagents | Could be duplicated, never finish (Claude Code 2.1+), or vanish when the main agent ends a turn | Spawned once, streamed live, finish on time, stay on the graph (dimmed) when done |
+| Telemetry | Opt-out | None |
 
 ## Features
 
-- **Live agent visualization**: Watch agent execution as an interactive node graph with real-time tool calls, branching, and return flows
-- **Claude Code hooks**: Lightweight HTTP hook server receives events directly from Claude Code for zero-latency streaming
-- **Transcript tailing**: Reads Claude Code's session transcripts in `~/.claude/projects/` (including subagents) so sessions show up even without hooks
-- **Multi-session support**: Track multiple concurrent agent sessions with tabs
-- **Interactive canvas**: Pan, zoom, click agents and tool calls to inspect details
-- **Timeline & transcript panels**: Review the full execution timeline, file attention heatmap, and message transcript
-- **JSONL log file support**: Point at any JSONL event log to replay or watch agent activity
+- **Live agent graph**: the main agent, every subagent, their tool calls and messages, connected parent → child
+- **Subagents in real time**, including background ones and subagents that were already running when you opened the page
+- **Multiple sessions**: each active session in the project gets a tab
+- **Context usage**: token bars per agent and a context ring on the main agent, split into system, user, tool results, reasoning and subagent results
+- **Panels**: transcript (Chat), files touched, cost estimate, timeline
+- **Review mode**: pause and scrub back through the session
+- **Reload-safe**: every connection replays the full history, so refreshing never loses or duplicates events
 
-## Getting Started
+## Quick start
 
-### Quick Start (no VS Code required)
-
-```bash
-npx agent-flow-app
-```
-
-This starts the visualizer in your browser. Start a Claude Code session in another terminal — events will stream in real-time.
-
-Options:
-- `--port <number>` — change the server port (default: 3001)
-- `--no-open` — don't open the browser automatically
-- `--verbose` — show detailed event logs
-
-### Standalone Web App (from source)
+Requirements: [Node.js](https://nodejs.org/) 20+ and [pnpm](https://pnpm.io/) 10.
 
 ```bash
-git clone https://github.com/patoles/agent-flow.git
-cd agent-flow
-pnpm i
-pnpm run setup      # configure Claude Code hooks (one-time)
-pnpm run dev        # start the web app + event relay
+git clone https://github.com/nguyenthanguth/agent-flow-claude.git
+cd agent-flow-claude
+pnpm install
+pnpm build
 ```
 
-Open http://localhost:3000 and start a Claude Code session in another terminal — events will stream to the browser in real-time.
+Then point it at the project you work on with Claude Code:
 
-### VS Code Extension
+```bash
+node server/dist/agent-flow-claude.js --workspace /path/to/your/project
+```
 
-1. Install the extension
-2. Open the Command Palette (`Cmd+Shift+P`) and run **Agent Flow: Open Agent Flow**
-3. Start a Claude Code session in your workspace — Agent Flow will auto-detect it
+Your browser opens at http://127.0.0.1:3030. Start or continue a Claude Code session in that project; it appears within about a second.
 
-Agent Flow automatically configures Claude Code hooks the first time you open the panel. To manually reconfigure, run **Agent Flow: Configure Claude Code Hooks** from the Command Palette.
+**No build tools?** Every push to `main` builds a ready-to-run bundle. Download the `agent-flow-claude` artifact from the latest [CI run](https://github.com/nguyenthanguth/agent-flow-claude/actions/workflows/ci.yml), unzip it, and run `node agent-flow-claude.js --workspace <project>`. It needs only Node.js, with no `npm install`.
 
-### JSONL Event Log
+### Options
 
-You can also point Agent Flow at a JSONL event log file:
+| Option | Description |
+|---|---|
+| `-w, --workspace <dir>` | Project to watch. Default: `$AGENT_FLOW_CLAUDE_WORKSPACE`, then the current directory. Subfolders of the project are included |
+| `-p, --port <number>` | Server port (default `3030`) |
+| `--no-open` | Don't open the browser |
+| `-v, --verbose` | Log every event |
 
-1. Set `agentVisualizer.eventLogPath` in your VS Code settings to the path of a `.jsonl` file
-2. Agent Flow will tail the file and visualize events as they arrive
+A session is picked up if its transcript, or one of its subagents', was written in the last 10 minutes. Older sessions attach as soon as they are written to again.
 
-## Commands
+## How it works
 
-| Command | Description |
-|---------|-------------|
-| `Agent Flow: Open Agent Flow` | Open the visualizer panel |
-| `Agent Flow: Open Agent Flow to Side` | Open in a side editor column |
-| `Agent Flow: Connect to Running Agent` | Manually connect to an agent session |
-| `Agent Flow: Configure Claude Code Hooks` | Set up Claude Code hooks for live streaming |
+Claude Code already writes everything Agent Flow needs to disk:
 
-## Keyboard Shortcut
+```
+~/.claude/projects/<encoded-project-path>/
+├── <session-id>.jsonl                  main agent transcript
+└── <session-id>/subagents/
+    ├── agent-<id>.jsonl                one transcript per subagent
+    └── agent-<id>.meta.json            { description, toolUseId, finished }
+```
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+Alt+A` (Mac) / `Ctrl+Alt+A` (Win/Linux) | Open Agent Flow |
+The server tails these files (file watchers plus a 1-second poll), turns transcript entries into agent events, and streams them to the browser over Server-Sent Events at `/events`. A subagent is named after its `description`. It finishes when its `<task-notification>` arrives or when its meta file says `finished: true`, whichever comes first.
 
-## Settings
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `agentVisualizer.devServerPort` | `0` | Development server port (0 = production mode) |
-| `agentVisualizer.eventLogPath` | `""` | Path to a JSONL event log file to watch |
-| `agentVisualizer.autoOpen` | `false` | Auto-open when an agent session starts |
-
-## Requirements
-
-- [Node.js](https://nodejs.org/) 20+ (LTS recommended)
-- [pnpm](https://pnpm.io/)
-- Claude Code CLI
-- For the VS Code extension: a VSCode-compatible IDE 1.85+ (e.g. [VS Code](https://code.visualstudio.com/), [Cursor](https://cursor.sh/), [Windsurf](https://windsurf.com/))
+```
+server/   Node server — src/core/ (transcript + subagent parsing), src/relay.ts (session watching + SSE), src/server.ts (HTTP)
+web/      React + Canvas UI, built with Vite
+```
 
 ## Development
 
 ```bash
-pnpm i              # install dependencies for all packages
-pnpm run setup      # configure Claude Code hooks (one-time)
-pnpm run dev        # start dev server + event relay
+pnpm dev          # server on :3030 (auto-restart) + UI on :3000 with hot reload
+pnpm dev:demo     # UI only, playing a built-in demo scenario (any build also accepts ?demo)
+pnpm test         # unit tests (node:test)
+pnpm typecheck    # TypeScript, server + web
+pnpm build        # production build into server/dist/
 ```
 
-`pnpm run dev` starts both the Next.js dev server and an event relay that receives Claude Code events and streams them to the browser via SSE.
+To watch another project while developing: `AGENT_FLOW_CLAUDE_WORKSPACE=/path/to/project pnpm dev`.
 
-Other scripts:
+GitHub Actions runs tests, typecheck and build on every push and pull request, and uploads the build as an artifact.
 
-| Script | Description |
-|--------|-------------|
-| `pnpm run dev:demo` | Start with demo/mock data |
-| `pnpm run dev:relay` | Run the event relay server standalone |
-| `pnpm run dev:extension` | Watch-build the extension |
-| `pnpm run build:all` | Production build (webview + extension) |
-| `pnpm run build:web` | Build the Next.js web app |
-| `pnpm run build:extension` | Build the extension |
-| `pnpm run build:webview` | Build the webview assets |
+### Windows
 
-## Star History
+Everything works from PowerShell, cmd or Git Bash. The repo's `.npmrc` enables pnpm's cross-platform script shell, so the POSIX-style scripts in `package.json` run under `cmd.exe` too.
 
-[![Star History Chart](https://api.star-history.com/chart?repos=patoles/agent-flow&type=date&legend=bottom-right)](https://www.star-history.com/?repos=patoles%2Fagent-flow&type=date&legend=bottom-right)
+## Credits and license
 
+agent-flow-claude is derived from [Agent Flow](https://github.com/patoles/agent-flow), created by [Simon Patole](https://github.com/patoles) for [Antics](https://antics.gg). The original code and this fork are licensed under Apache 2.0; see [LICENSE](LICENSE).
 
-## Author
-
-Created by [Simon Patole](https://github.com/patoles), for [Antics](https://antics.gg).
-
-## Privacy & Telemetry
-
-Agent Flow ships **opt-out** anonymous usage telemetry, enabled by default only
-in the published `npx agent-flow-app` binary. `pnpm run dev` and the VS Code
-extension emit nothing. Only aggregate events are sent — session count,
-duration, event count, OS/arch, Agent Flow version, distinct model IDs
-observed, which runtimes were watched, and error class names. Prompts, file
-paths, tool calls, user info, and environment variables are never sent.
-
-- **Turn off:** `export AGENT_FLOW_TELEMETRY=false` or `export DO_NOT_TRACK=1`
-  (disabled installs write zero state to disk — no `~/.agent-flow/` directory)
-- **Inspect the payload:** `cat ~/.agent-flow/telemetry/events.jsonl`
-- **Full schema + exact fields:** see the v0.8.1 entry in
-  [extension/CHANGELOG.md](extension/CHANGELOG.md) or the `serialize()` function
-  in [scripts/telemetry.ts](scripts/telemetry.ts)
-- **Reset your anonymous identity:** delete `~/.agent-flow/installation-id` —
-  a fresh random UUIDv4 will be generated on next run
-
-
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE) for details.
-
-The name "Agent Flow" and associated logos are trademarks of Simon Patole. See [TRADEMARK.md](TRADEMARK.md) for usage guidelines.
+"Agent Flow" and its logos are trademarks of Simon Patole ([TRADEMARK.md](TRADEMARK.md)). This fork uses the name only to describe where it comes from, and does not use the Agent Flow logo.

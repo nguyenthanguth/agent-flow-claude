@@ -41,6 +41,6 @@ export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse)
     // No UI build next to the server (e.g. running from source): `pnpm dev`
     // serves the UI through Vite and only uses this server for /events.
     res.writeHead(404, { 'Content-Type': 'text/plain' })
-    res.end('Agent Flow UI is not built. Run `pnpm build`, or use `pnpm dev` and open http://localhost:3000.')
+    res.end('agent-flow-claude UI is not built. Run `pnpm build`, or use `pnpm dev` and open http://localhost:3000.')
   }
 }
