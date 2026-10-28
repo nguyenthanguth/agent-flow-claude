@@ -3,64 +3,28 @@ import { VisualizerPanel } from './webview-provider'
 import { JsonlEventSource } from './event-source'
 import { WebviewToExtensionMessage } from './protocol'
 import { startClaudeRuntime } from './claude-runtime'
-import { startCodexRuntime } from './codex-runtime'
 import { promptHookSetupIfNeeded, configureClaudeHooks, isDisable1MContext } from './hooks-config'
 import { createLogger } from './logger'
-import type { AgentRuntime, AgentRuntimeMode } from './session-runtime'
+import type { AgentRuntime } from './session-runtime'
 
 const log = createLogger('Extension')
-
-type ConfiguredRuntimeMode = AgentRuntimeMode | 'auto'
 
 let eventSource: JsonlEventSource | undefined
 let runtimes: AgentRuntime[] = []
 
-function readConfiguredMode(): ConfiguredRuntimeMode {
-  const raw = vscode.workspace.getConfiguration('agentVisualizer').get<string>('runtime', 'auto')
-  return raw === 'claude' || raw === 'codex' ? raw : 'auto'
-}
-
-interface StartRuntimesResult {
-  runtimes: AgentRuntime[]
-  failures: AgentRuntimeMode[]
-}
-
-async function startRuntimes(
-  mode: ConfiguredRuntimeMode,
-  context: vscode.ExtensionContext,
-): Promise<StartRuntimesResult> {
-  const runtimes: AgentRuntime[] = []
-  const failures: AgentRuntimeMode[] = []
-  if (mode === 'claude' || mode === 'auto') {
-    log.info('Starting Claude runtime...')
-    try { runtimes.push(await startClaudeRuntime(context)) }
-    catch (err) { log.error('Claude runtime failed to start:', err); failures.push('claude') }
-  }
-  if (mode === 'codex' || mode === 'auto') {
-    log.info('Starting Codex runtime...')
-    try { runtimes.push(startCodexRuntime(context)) }
-    catch (err) { log.error('Codex runtime failed to start:', err); failures.push('codex') }
-  }
-  return { runtimes, failures }
-}
-
 export async function activate(context: vscode.ExtensionContext) {
   log.info('Extension activated')
 
-  const mode = readConfiguredMode()
-  log.info(`Runtime mode: ${mode}`)
-  const { runtimes: started, failures } = await startRuntimes(mode, context)
-  runtimes = started
-  log.info(`Active runtimes: ${runtimes.map(r => r.mode).join(', ') || 'none'}`)
-
-  // Surface startup failures to the user — the log-only path leaves them
-  // staring at a "disconnected" visualizer with no explanation.
-  if (runtimes.length === 0 && failures.length > 0) {
+  log.info('Starting Claude runtime...')
+  try {
+    runtimes = [await startClaudeRuntime(context)]
+  } catch (err) {
+    log.error('Claude runtime failed to start:', err)
+    // Surface startup failures to the user — the log-only path leaves them
+    // staring at a "disconnected" visualizer with no explanation.
     vscode.window.showWarningMessage(
-      `Agent Visualizer: ${failures.join(' and ')} runtime${failures.length > 1 ? 's' : ''} failed to start. See the Output panel for details.`,
+      'Agent Visualizer: Claude runtime failed to start. See the Output panel for details.',
     )
-  } else if (failures.length > 0) {
-    log.info(`Partial startup — ${failures.join(', ')} failed but ${runtimes.map(r => r.mode).join(', ')} active`)
   }
 
   // ─── Commands ──────────────────────────────────────────────────────────────
@@ -133,8 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
   })
 }
 
-/** Only prompt for Claude hook setup if a Claude runtime is active —
- *  otherwise a Codex-only user would see an irrelevant prompt. */
+/** Only prompt for Claude hook setup if the Claude runtime started. */
 function promptHookSetupIfNeededForClaude(context: vscode.ExtensionContext): void {
   if (runtimes.some(r => r.mode === 'claude')) {
     promptHookSetupIfNeeded(context)

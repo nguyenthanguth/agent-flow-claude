@@ -218,14 +218,6 @@ export function AgentVisualizer() {
   const selectedAgent = selection.selectedAgentId ? agents.get(selection.selectedAgentId) : null
   const selectedConversation = selection.selectedAgentId ? (conversations.get(selection.selectedAgentId) || []) : []
 
-  // Session runtime — drives the assistant label (CLAUDE vs CODEX) in transcript panels
-  const sessionRuntime = useMemo(() => {
-    for (const a of agents.values()) {
-      if (a.runtime === 'codex') return 'codex' as const
-    }
-    return 'claude' as const
-  }, [agents])
-
   // Session-wide conversation (all agents merged chronologically)
   // Only compute when the transcript panel is visible to avoid O(n log n) sort every frame
   const sessionConversation = useMemo(() => {
@@ -343,7 +335,6 @@ export function AgentVisualizer() {
         agentName={selectedAgent?.name ?? ''}
         agentState={selectedAgent?.state ?? 'idle'}
         conversation={selectedConversation}
-        runtime={selectedAgent?.runtime ?? sessionRuntime}
         onClose={selection.clearAgent}
       />
 
@@ -395,7 +386,6 @@ export function AgentVisualizer() {
       <SessionTranscriptPanel
         visible={showTranscript}
         conversation={sessionConversation}
-        runtime={sessionRuntime}
         onClose={() => setShowTranscript(false)}
       />
 

@@ -288,7 +288,6 @@ export function MessageFeedPanel({
                       showAgent={activeTab === 'all'}
                       isSelected={selectedAgentId === msg.agentId}
                       onClick={() => { onAgentClick(msg.agentId); setExpanded(false) }}
-                      runtime={agents.get(msg.agentId)?.runtime}
                     />
                   </div>
                 ))}
@@ -333,18 +332,17 @@ function TabButton({ label, active, onClick, color, hasUnread }: {
 
 // ── Message Row ──
 
-function MessageRow({ message, agentId, agentName, showAgent, isSelected, onClick, runtime }: {
+function MessageRow({ message, agentId, agentName, showAgent, isSelected, onClick }: {
   message: ConversationMessage
   agentId: string
   agentName: string
   showAgent: boolean
   isSelected: boolean
   onClick: () => void
-  runtime?: Agent['runtime']
 }) {
   const [expanded, setExpanded] = useState(false)
   const role = ROLE_COLORS[message.type] ?? ROLE_COLORS.assistant
-  const roleLabel = message.type === 'assistant' && runtime === 'codex' ? 'CODEX' : role.label
+  const roleLabel = role.label
   const isLong = message.content.length > MESSAGE_TRUNCATE_MAX
   const displayText = expanded || !isLong ? message.content : message.content.slice(0, MESSAGE_TRUNCATE_MAX) + '...'
 

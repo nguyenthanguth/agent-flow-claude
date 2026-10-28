@@ -1,7 +1,7 @@
 {
   "name": "agent-flow",
   "displayName": "Agent Flow",
-  "description": "Real-time visualization of Claude Code and Codex agent orchestration",
+  "description": "Real-time visualization of Claude Code agent orchestration",
   "version": "0.9.2",
   "publisher": "simon-p",
   "license": "Apache-2.0",
@@ -14,7 +14,7 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Visualization", "Other"],
-  "keywords": ["llm", "agent", "claude", "codex", "ai", "visualization", "orchestration"],
+  "keywords": ["llm", "agent", "claude", "ai", "visualization", "orchestration"],
   "activationEvents": [
     "onWebviewPanel:agentVisualizer"
   ],
@@ -52,17 +52,6 @@
     "configuration": {
       "title": "Agent Flow",
       "properties": {
-        "agentVisualizer.runtime": {
-          "type": "string",
-          "enum": ["auto", "claude", "codex"],
-          "enumDescriptions": [
-            "Watch both Claude Code and Codex sessions concurrently (default)",
-            "Watch only Claude Code sessions",
-            "Watch only Codex sessions"
-          ],
-          "default": "auto",
-          "description": "Which agent runtime(s) to watch. In auto mode, runtimes you don't use are harmless no-ops (no session directory = nothing to scan)."
-        },
         "agentVisualizer.devServerPort": {
           "type": "number",
           "default": 0,

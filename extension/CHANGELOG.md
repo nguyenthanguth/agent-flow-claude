@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (fork)
+
+- **Removed Codex support** — this fork visualizes Claude Code sessions only
+  - Removed the Codex rollout watcher and parser, the OpenAI logo and "CODEX" labels in the web view, and GPT model context/cost/name handling
+  - Removed the `agentVisualizer.runtime` setting and the `AGENT_FLOW_RUNTIME` environment variable; the Claude runtime always runs
+- Fix: `pnpm run dev` and `pnpm run dev:demo` failed on Windows (`'NEXT_PUBLIC_DEMO' is not recognized`) because pnpm ran scripts through `cmd.exe`. The repo `.npmrc` now enables pnpm's cross-platform `shell-emulator`
+
 ## 0.9.2
 
 - Fix: hook setup no longer removes other tools' hooks from `~/.claude/settings.json` (#73)

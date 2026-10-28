@@ -45,9 +45,9 @@ export interface TelemetryEvent {
   event_count?: number
   error_class?: string
   /** Comma-separated distinct model IDs observed during the session
-   *  (e.g., `"claude-opus-4-7,gpt-5"`). session_end only. */
+   *  (e.g., `"claude-opus-4-7,claude-sonnet-4-6"`). session_end only. */
   models?: string
-  /** Which runtimes were being watched: `"claude"`, `"codex"`, or `"claude,codex"`.
+  /** Which runtimes were being watched. Always `"claude"` in this fork.
    *  session_end only. */
   runtimes?: string
 }

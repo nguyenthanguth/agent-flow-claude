@@ -19,7 +19,6 @@ export function handleAgentSpawn(
   const isMain = asBoolean(payload.isMain)
   const task = typeof payload.task === 'string' ? payload.task : undefined
   const model = typeof payload.model === 'string' ? payload.model : undefined
-  const runtime = payload.runtime === 'codex' ? 'codex' as const : undefined
 
   // If the agent already exists (e.g. session resuming after inactivity),
   // reactivate it instead of replacing — preserves accumulated stats.
@@ -30,7 +29,6 @@ export function handleAgentSpawn(
       state: 'idle',
       ...(task ? { task } : {}),
       ...(model ? { model, tokensMax: ctx.getContextWindowSize(model) } : {}),
-      ...(runtime ? { runtime } : {}),
     })
     return
   }
@@ -81,7 +79,6 @@ export function handleAgentSpawn(
     toolCalls: 0, timeAlive: 0,
     x, y, vx: 0, vy: 0,
     pinned: false, isMain,
-    ...(runtime ? { runtime } : {}),
     ...(model ? { model } : {}),
     task,
     spawnTime: currentTime,

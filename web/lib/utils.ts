@@ -21,7 +21,6 @@ const DATE_STAMP = /-\d{8}(?=$|-)/
 
 const CLAUDE_NEW = new RegExp(`claude-(${CLAUDE_FAMILY_ALTERNATION})-(\\d+)(?:-(\\d+))?`, 'i')
 const CLAUDE_LEGACY = new RegExp(`claude-(\\d+)(?:-(\\d+))?-(${CLAUDE_FAMILY_ALTERNATION})`, 'i')
-const GPT = /gpt-(\S+?)(?:-\d{4}-\d{2}-\d{2})?$/i
 
 function claudeLabel(family: string, major: string, minor?: string): string {
   const name = family[0].toUpperCase() + family.slice(1).toLowerCase()
@@ -40,9 +39,6 @@ export function formatModelName(model: string): string {
 
   const legacy = base.match(CLAUDE_LEGACY)
   if (legacy) return claudeLabel(legacy[3], legacy[1], legacy[2])
-
-  const gpt = base.match(GPT)
-  if (gpt) return `GPT-${gpt[1]}`
 
   return base
 }

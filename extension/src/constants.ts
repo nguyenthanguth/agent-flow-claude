@@ -195,13 +195,7 @@ export function resolveSubagentChildName(input: Record<string, unknown>): string
 }
 
 /** Prefixes that identify system-injected content (not real user messages).
- *  Used by both Claude Code (transcript-parser.ts) and Codex
- *  (codex-rollout-parser.ts extractCodexUserText), so additions here
- *  widen filtering for both runtimes.
- *  Codex also has its own extraction logic because the injection format
- *  is structurally different (e.g. real prompts wrapped inside a
- *  "# Context from my IDE setup:" block, reachable via the
- *  "## My request for Codex:" marker). */
+ *  Used by transcript-parser.ts to filter Claude Code transcripts. */
 export const SYSTEM_CONTENT_PREFIXES = [
   'This session is being continued',
   '<ide_',

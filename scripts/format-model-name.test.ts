@@ -26,13 +26,6 @@ test('strips Bedrock/Vertex provider prefixes and version suffixes', () => {
   assert.equal(formatModelName('eu.anthropic.claude-haiku-4-5-20251001-v2:0'), 'Haiku 4.5')
 })
 
-test('formats GPT model ids', () => {
-  assert.equal(formatModelName('gpt-5.3-codex'), 'GPT-5.3-codex')
-  assert.equal(formatModelName('gpt-5-2025-01-01'), 'GPT-5')
-  assert.equal(formatModelName('gpt-4o-2024-08-06'), 'GPT-4o')
-  assert.equal(formatModelName('chatgpt-4o-latest'), 'GPT-4o-latest')
-})
-
 test('falls back to stripped base model id for unknown formats', () => {
   assert.equal(formatModelName('custom-model-20250101'), 'custom-model')
 })

@@ -18,14 +18,12 @@ const TRANSCRIPT_INITIAL_VIEWPORT = 400
 interface TranscriptPanelProps {
   visible: boolean
   conversation: ConversationMessage[]
-  runtime?: 'claude' | 'codex'
   onClose: () => void
 }
 
 export function SessionTranscriptPanel({
   visible,
   conversation,
-  runtime,
   onClose,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -148,7 +146,7 @@ export function SessionTranscriptPanel({
                     ref={(el) => itemMeasureRef(msg.id, el)}
                     style={{ marginBottom: TRANSCRIPT_GAP }}
                   >
-                    <TranscriptMessage message={msg} searchQuery={searchQuery} assistantLabel={runtime === 'codex' ? 'CODEX' : 'CLAUDE'} />
+                    <TranscriptMessage message={msg} searchQuery={searchQuery} />
                   </div>
                 ))}
               </div>
