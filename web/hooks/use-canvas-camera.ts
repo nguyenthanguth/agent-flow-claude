@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, type MutableRefObject } from 'react'
 import { Agent, ToolCallNode, Discovery, ANIM, NODE } from '@/lib/agent-types'
-import { BUBBLE_HOLD, BUBBLE_FADE_OUT, BUBBLE_MAX_W, TOOL_CARD_W, TOOL_CARD_H, DISC_BOUNDS_HALF_W, DISC_BOUNDS_HALF_H } from '@/lib/canvas-constants'
+import { CAMERA, BUBBLE_HOLD, BUBBLE_FADE_OUT, BUBBLE_MAX_W, TOOL_CARD_W, TOOL_CARD_H, DISC_BOUNDS_HALF_W, DISC_BOUNDS_HALF_H } from '@/lib/canvas-constants'
 
 /** Extra padding added to agent node radii for auto-fit bounding box */
 const AUTOFIT_AGENT_PADDING = 22
@@ -20,6 +20,7 @@ interface CameraOptions {
     dimensions: { width: number; height: number }
     selectedAgentId: string | null
     pauseAutoFit?: boolean
+    fitInsetRight?: number
     isDragging: boolean
   }>
   simTimeRef: MutableRefObject<number>
@@ -50,8 +51,10 @@ export function useCanvasCamera({
     toolCalls: Map<string, ToolCallNode> | null
     discoveries: Discovery[] | null
     selectedAgentId: string | null
+    dimensions: { width: number; height: number } | null
+    fitInsetRight: number
     result: Transform | null
-  }>({ agents: null, toolCalls: null, discoveries: null, selectedAgentId: null, result: null })
+  }>({ agents: null, toolCalls: null, discoveries: null, selectedAgentId: null, dimensions: null, fitInsetRight: 0, result: null })
 
   // Initialize transform centered on first agents
   useEffect(() => {
@@ -77,7 +80,7 @@ export function useCanvasCamera({
   }, [])
 
   const computeFitTransform = useCallback((): Transform | null => {
-    const { agents, toolCalls, discoveries, dimensions, selectedAgentId } = drawPropsRef.current
+    const { agents, toolCalls, discoveries, dimensions, selectedAgentId, fitInsetRight = 0 } = drawPropsRef.current
     if (agents.size === 0) return null
 
     // Return cached result if inputs haven't changed (reference equality —
@@ -86,7 +89,9 @@ export function useCanvasCamera({
     if (cache.agents === agents
       && cache.toolCalls === toolCalls
       && cache.discoveries === discoveries
-      && cache.selectedAgentId === selectedAgentId) {
+      && cache.selectedAgentId === selectedAgentId
+      && cache.dimensions === dimensions
+      && cache.fitInsetRight === fitInsetRight) {
       return cache.result
     }
 
@@ -140,7 +145,7 @@ export function useCanvasCamera({
       }
     }
     if (minX === Infinity) {
-      fitCacheRef.current = { agents, toolCalls, discoveries, selectedAgentId, result: null }
+      fitCacheRef.current = { agents, toolCalls, discoveries, selectedAgentId, dimensions, fitInsetRight, result: null }
       return null
     }
     const padding = ANIM.viewportPadding
@@ -148,13 +153,15 @@ export function useCanvasCamera({
     const boundsH = maxY - minY + padding * 2
     const centerX = (minX + maxX) / 2
     const centerY = (minY + maxY) / 2
-    const scale = Math.min(dimensions.width / boundsW, dimensions.height / boundsH, 2)
+    // Fit into the part of the canvas not covered by a docked panel
+    const visibleW = Math.max(dimensions.width - fitInsetRight, dimensions.width / 2)
+    const scale = Math.min(visibleW / boundsW, dimensions.height / boundsH, CAMERA.maxFitZoom)
     const result = {
-      x: dimensions.width / 2 - centerX * scale,
+      x: visibleW / 2 - centerX * scale,
       y: dimensions.height / 2 - centerY * scale,
       scale,
     }
-    fitCacheRef.current = { agents, toolCalls, discoveries, selectedAgentId, result }
+    fitCacheRef.current = { agents, toolCalls, discoveries, selectedAgentId, dimensions, fitInsetRight, result }
     return result
   }, [getDescendantIds, drawPropsRef, simTimeRef])
 

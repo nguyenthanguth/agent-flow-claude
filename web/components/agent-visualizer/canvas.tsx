@@ -29,6 +29,8 @@ interface CanvasProps {
   showHexGrid: boolean
   zoomToFitTrigger?: number
   pauseAutoFit?: boolean
+  /** Pixels on the right covered by a docked panel; auto-fit centers in the rest */
+  fitInsetRight?: number
   onAgentClick: (agentId: string | null) => void
   onAgentHover: (agentId: string | null) => void
   onAgentDrag: (agentId: string, x: number, y: number) => void
@@ -42,8 +44,8 @@ interface CanvasProps {
 
 export function AgentCanvas({
   simulationRef,
-  selectedAgentId, hoveredAgentId, showStats, showHexGrid, zoomToFitTrigger, pauseAutoFit,
-  onAgentClick, onAgentHover, onAgentDrag, onContextMenu, onToolCallClick, selectedToolCallId, onDiscoveryClick, selectedDiscoveryId, showCostOverlay,
+  selectedAgentId, hoveredAgentId, showStats, showHexGrid, zoomToFitTrigger, pauseAutoFit, fitInsetRight = 0,
+  onAgentClick,onAgentHover, onAgentDrag, onContextMenu, onToolCallClick, selectedToolCallId, onDiscoveryClick, selectedDiscoveryId, showCostOverlay,
 }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mainCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -90,7 +92,7 @@ export function AgentCanvas({
     particles: sim.particles, edges: sim.edges, discoveries: sim.discoveries,
     selectedAgentId, hoveredAgentId, showStats, showHexGrid,
     showCostOverlay, selectedToolCallId, selectedDiscoveryId,
-    simTime: sim.currentTime, pauseAutoFit, dimensions,
+    simTime: sim.currentTime, pauseAutoFit, fitInsetRight, dimensions,
     onAgentDrag, onAgentClick, onAgentHover, onContextMenu,
     onToolCallClick, onDiscoveryClick,
     isDragging: prev?.isDragging ?? false,

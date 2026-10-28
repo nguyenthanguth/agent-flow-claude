@@ -188,6 +188,9 @@ export const CARD = {
 
   chat: { width: 300, maxHeight: 360, messagesMinHeight: 100, messagesMaxHeight: 240 },
   transcript: { width: 380 },
+  files: { width: 260 },
+  /** Gap between the right-docked panels and the window edge */
+  panelEdge: 12,
   margin: 8,
   offsetX: 40,     // horizontal offset from agent to detail card
   offsetY: -80,    // vertical offset from agent to detail card

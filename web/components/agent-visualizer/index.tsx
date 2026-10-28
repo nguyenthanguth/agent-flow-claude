@@ -14,7 +14,7 @@ import { TimelinePanel } from "./timeline-panel"
 import { AgentChatPanel } from "./chat-panel"
 import { SessionTranscriptPanel } from "./session-transcript-panel"
 import { stopPropagationHandlers } from "./shared-ui"
-import { TimelineEvent, TIMING } from "@/lib/agent-types"
+import { CARD, TimelineEvent, TIMING } from "@/lib/agent-types"
 import { COLORS } from "@/lib/colors"
 
 import { MOCK_DURATION } from "@/lib/mock-scenario"
@@ -228,6 +228,14 @@ export function AgentVisualizer() {
   const selectedAgent = selection.selectedAgentId ? agents.get(selection.selectedAgentId) : null
   const selectedConversation = selection.selectedAgentId ? (conversations.get(selection.selectedAgentId) || []) : []
 
+  // Width covered by right-docked panels, so auto-fit keeps nodes out from under them
+  const rightPanelWidth = Math.max(
+    showTranscript ? CARD.transcript.width : 0,
+    showFileAttention ? CARD.files.width : 0,
+    selectedAgent ? CARD.chat.width : 0,
+  )
+  const fitInsetRight = rightPanelWidth > 0 ? rightPanelWidth + CARD.panelEdge : 0
+
   // Session-wide conversation (all agents merged chronologically)
   // Only compute when the transcript panel is visible to avoid O(n log n) sort every frame
   const sessionConversation = useMemo(() => {
@@ -290,6 +298,7 @@ export function AgentVisualizer() {
         showHexGrid={showHexGrid}
         zoomToFitTrigger={zoomToFitTrigger}
         pauseAutoFit={selection.contextMenu !== null}
+        fitInsetRight={fitInsetRight}
         onAgentClick={selection.handleAgentClick}
         onAgentHover={selection.setHoveredAgentId}
         onAgentDrag={updateAgentPosition}

@@ -1,4 +1,4 @@
-import { FileAttention, Z } from '@/lib/agent-types'
+import { CARD, FileAttention, Z } from '@/lib/agent-types'
 import { COLORS } from '@/lib/colors'
 import { formatTokens, truncatePath } from '@/lib/utils'
 import { PanelHeader, ProgressBar, SlidingPanel } from './shared-ui'
@@ -23,7 +23,7 @@ export function FileAttentionPanel({ visible, fileAttention, onClose, onOpenFile
       visible={visible}
       position={{ top: 60, right: 12 }}
       zIndex={Z.sidePanel}
-      width={260}
+      width={CARD.files.width}
     >
       <div className="glass-card relative">
         <PanelHeader onClose={onClose}>

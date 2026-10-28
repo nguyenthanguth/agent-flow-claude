@@ -153,6 +153,9 @@ export const CAMERA = {
   zoomStepUp: 1.08,
   minZoom: 0.2,
   maxZoom: 4,
+  /** Most auto-fit zooms in. With one or two agents a cap of 2 blew text
+   *  and nodes up to twice their designed size */
+  maxFitZoom: 1.3,
   velocityScale: 0.016,
 } as const
 
