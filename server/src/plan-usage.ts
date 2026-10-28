@@ -37,12 +37,19 @@ const toTime = (v: unknown): number | undefined => {
   return Number.isFinite(t) ? t : undefined
 }
 
+/** Display name of one scope part ({ display_name } object or plain string) */
+function scopeName(part: unknown): string | null {
+  if (typeof part === 'string' && part) return part
+  if (isRecord(part) && typeof part.display_name === 'string' && part.display_name) return part.display_name
+  return null
+}
+
 function limitLabel(kind: string, group: string, scope: unknown): string {
-  const model = isRecord(scope) && isRecord(scope.model) && typeof scope.model.display_name === 'string'
-    ? scope.model.display_name : null
-  if (group === 'session') return '5-hour session'
-  if (group === 'weekly') return model ? `Week · ${model}` : 'Week'
-  return model ? `${kind} · ${model}` : kind.replace(/_/g, ' ')
+  const parts = isRecord(scope) ? [scopeName(scope.model), scopeName(scope.surface)].filter(Boolean) : []
+  const suffix = parts.length ? ` · ${parts.join(' · ')}` : ''
+  if (group === 'session') return `5-hour session${suffix}`
+  if (group === 'weekly') return `Week${suffix}`
+  return `${kind.replace(/_/g, ' ')}${suffix}`
 }
 
 /** Turn the endpoint's response into the limits the UI shows */
@@ -52,13 +59,18 @@ export function parsePlanUsage(body: unknown): PlanLimit[] {
 
   // Preferred: the generic `limits` list (what /usage renders)
   if (Array.isArray(body.limits)) {
+    const seen = new Map<string, number>()
     for (const l of body.limits) {
       if (!isRecord(l) || typeof l.percent !== 'number') continue
       const kind = typeof l.kind === 'string' ? l.kind : 'limit'
       const group = typeof l.group === 'string' ? l.group : kind
       const label = limitLabel(kind, group, l.scope)
+      // Unique even when two limits read the same (unknown scope fields)
+      const base = `${kind}:${label}`
+      const n = (seen.get(base) ?? 0) + 1
+      seen.set(base, n)
       limits.push({
-        id: `${kind}:${label}`,
+        id: n === 1 ? base : `${base}#${n}`,
         group,
         label,
         percent: l.percent,
@@ -99,8 +111,8 @@ export async function fetchPlanUsage(): Promise<PlanUsage> {
     })
     if (res.status === 401) return { status: 'expired', plan: creds.subscriptionType, limits: [], fetchedAt }
     if (!res.ok) return { status: 'unavailable', plan: creds.subscriptionType, limits: [], fetchedAt, error: `HTTP ${res.status}` }
-    const limits = parsePlanUsage(await res.json())
-    return { status: limits.length ? 'ok' : 'unavailable', plan: creds.subscriptionType, limits, fetchedAt }
+    // A plan may simply have no limits right now; that is still a good answer
+    return { status: 'ok', plan: creds.subscriptionType, limits: parsePlanUsage(await res.json()), fetchedAt }
   } catch (err) {
     return { status: 'unavailable', plan: creds.subscriptionType, limits: [], fetchedAt, error: err instanceof Error ? err.name : 'error' }
   }

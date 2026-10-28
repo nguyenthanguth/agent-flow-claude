@@ -24,43 +24,52 @@ const HOUR = 60 * 60 * 1000
 const WINDOW_MS: Record<string, number> = { session: 5 * HOUR, weekly: 7 * 24 * HOUR }
 /** Last good limits (percentages, reset times, plan name — no credentials) */
 const CACHE_PATH = path.join(os.homedir(), '.agent-flow-claude', 'plan-usage.json')
-/** Older cached limits are not worth showing */
-const CACHE_MAX_AGE_MS = 6 * HOUR
+/** Limits older than this are not shown, whether from disk or kept after failed refreshes */
+const MAX_LIMITS_AGE_MS = 6 * HOUR
 
 export interface UsageMonitorOptions {
   /** Ask Anthropic for the plan's limits (needs Claude Code's login) */
   fetchPlan: boolean
   onUpdate: (report: PlanUsageReport) => void
+  /** Overrides for tests */
+  fetcher?: () => Promise<PlanUsage>
+  cachePath?: string
+  index?: LocalUsageIndex
 }
 
-function readCache(): PlanUsage | null {
+function readCache(cachePath: string): PlanUsage | null {
   try {
-    const cached = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8')) as PlanUsage
-    if (cached.status !== 'ok' || !Array.isArray(cached.limits) || Date.now() - cached.fetchedAt > CACHE_MAX_AGE_MS) return null
+    const cached = JSON.parse(fs.readFileSync(cachePath, 'utf-8')) as PlanUsage
+    if (cached.status !== 'ok' || !Array.isArray(cached.limits) || Date.now() - cached.fetchedAt > MAX_LIMITS_AGE_MS) return null
     return cached
   } catch {
     return null
   }
 }
 
-function writeCache(plan: PlanUsage): void {
+function writeCache(cachePath: string, plan: PlanUsage): void {
   try {
-    fs.mkdirSync(path.dirname(CACHE_PATH), { recursive: true })
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true })
     const { status, plan: name, limits, fetchedAt } = plan
-    fs.writeFileSync(CACHE_PATH, JSON.stringify({ status, plan: name, limits, fetchedAt }))
+    fs.writeFileSync(cachePath, JSON.stringify({ status, plan: name, limits, fetchedAt }))
   } catch { /* cache is best effort */ }
 }
 
 export class UsageMonitor {
-  private index = new LocalUsageIndex()
+  private index: LocalUsageIndex
+  private cachePath: string
+  private fetcher: () => Promise<PlanUsage>
   private plan: PlanUsage
   private timer: NodeJS.Timeout | null = null
   private disposed = false
   latest: PlanUsageReport | null = null
 
   constructor(private options: UsageMonitorOptions) {
+    this.index = options.index ?? new LocalUsageIndex()
+    this.cachePath = options.cachePath ?? CACHE_PATH
+    this.fetcher = options.fetcher ?? fetchPlanUsage
     this.plan = options.fetchPlan
-      ? readCache() ?? { status: 'unavailable', limits: [], fetchedAt: 0 }
+      ? readCache(this.cachePath) ?? { status: 'unavailable', limits: [], fetchedAt: 0 }
       : { status: 'disabled', limits: [], fetchedAt: 0 }
   }
 
@@ -68,23 +77,27 @@ export class UsageMonitor {
     void this.tick()
   }
 
-  private async tick(): Promise<void> {
+  /** One poll: publish, fetch limits, scan transcripts, publish. Schedules the next. */
+  async tick(): Promise<void> {
     if (this.disposed) return
     let delay = POLL_MS
     try {
+      // Show what we have (e.g. cached limits) before the network round trip
+      if (!this.latest) this.publish()
       if (this.options.fetchPlan) {
-        const next = await fetchPlanUsage()
+        const next = await this.fetcher()
         if (next.error) {
           log.warn(`Plan usage unavailable (${next.error})`)
           delay = BACKOFF_MS
         }
-        if (next.status === 'ok') writeCache(next)
-        // A transient failure (rate limit, network) keeps the last good limits on screen
-        this.plan = next.status === 'unavailable' && this.plan.limits.length > 0
-          ? { ...this.plan, error: next.error ?? 'unavailable' }
+        if (next.status === 'ok') writeCache(this.cachePath, next)
+        // A transient failure (rate limit, network) keeps the last good limits
+        // on screen; a successful answer without limits replaces them.
+        this.plan = next.error && this.plan.limits.length > 0
+          ? { ...this.plan, error: next.error }
           : next
       }
-      // Publish limits right away, then again once the local scan is done
+      // Publish limits now, then again once the local scan is done
       if (!this.index.ready) this.publish()
       await this.index.refresh()
       this.publish()
@@ -96,14 +109,18 @@ export class UsageMonitor {
 
   private publish(): void {
     const now = Date.now()
-    // Drop limits whose window has already reset — their percentage is stale
-    const limits = this.plan.limits.filter(l => !l.resetsAt || l.resetsAt > now)
+    const tooOld = this.plan.limits.length > 0 && now - this.plan.fetchedAt > MAX_LIMITS_AGE_MS
+    // Drop limits whose window already reset (their percentage is stale), and
+    // everything once the last successful fetch is too old to trust
+    const limits = tooOld ? [] : this.plan.limits.filter(l => !l.resetsAt || l.resetsAt > now)
+    const plan: PlanUsage = tooOld ? { ...this.plan, status: 'unavailable', limits: [] } : this.plan
     const windows = Object.entries(WINDOW_MS).map(([group, length]) => {
-      const limit = limits.find(l => l.group === group && l.resetsAt)
+      // Align with the limit actually in effect; otherwise a rolling window
+      const limit = limits.find(l => l.group === group && l.active && l.resetsAt)
       const since = limit?.resetsAt ? limit.resetsAt - length : now - length
       return { group, since, byModel: this.index.ready ? this.index.totalsSince(since) : {} }
     })
-    this.latest = { ...this.plan, limits, windows }
+    this.latest = { ...plan, limits, windows }
     this.options.onUpdate(this.latest)
   }
 

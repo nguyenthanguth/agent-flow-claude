@@ -1,3 +1,9 @@
+/**
+ * Plan usage bar in the top bar: a meter per active plan limit (5-hour
+ * session, weekly) with time to reset, and a popover listing every limit plus
+ * this machine's usage in the same windows. Data: PlanUsageReport from the
+ * server (server/src/usage-monitor.ts).
+ */
 import { memo, useEffect, useRef, useState } from 'react'
 import { COLORS } from '@/lib/colors'
 import { usageCost } from '@/lib/pricing'
@@ -12,6 +18,11 @@ function formatRemaining(ms: number): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours} h ${minutes % 60} min`
   return `${Math.floor(hours / 24)} d ${hours % 24} h`
+}
+
+function formatAge(ms: number): string {
+  const minutes = Math.round(ms / 60_000)
+  return minutes < 1 ? 'just now' : `${formatRemaining(ms)} ago`
 }
 
 function formatResetTime(at: number, now: number): string {
@@ -174,12 +185,12 @@ export const UsageBar = memo(function UsageBar({ report }: { report: PlanUsageRe
 
           {report.error && report.limits.length > 0 && (
             <div className="mt-2 text-[11px]" style={{ color: COLORS.waiting_permission }}>
-              Couldn't refresh ({report.error}) — showing values from {new Date(report.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, retrying later
+              Couldn't refresh ({report.error}) — showing values from {formatAge(now - report.fetchedAt)}, retrying later
             </div>
           )}
 
           <div className="mt-2 text-[10.5px] leading-snug" style={{ color: COLORS.textMuted }}>
-            Limits from your Claude account, updated every 5 min{report.fetchedAt ? ` (last ${new Date(report.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}.
+            Limits from your Claude account, updated every 5 min{report.fetchedAt ? ` (last ${formatAge(now - report.fetchedAt)})` : ''}.
             Machine totals include cache reads and are priced at API list prices.
           </div>
         </div>

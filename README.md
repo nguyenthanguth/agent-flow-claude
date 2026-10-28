@@ -130,6 +130,8 @@ agent-flow-claude reads Claude Code's files under `~/.claude` and never writes t
 
 The one network request it makes is for the plan usage bar: every 5 minutes it asks `api.anthropic.com/api/oauth/usage` for your limits, the same request Claude Code's `/usage` makes, using the login token Claude Code keeps in `~/.claude/.credentials.json`. The token is read fresh each time, never stored or refreshed, and sent nowhere else. The last result (percentages and reset times only) is cached in `~/.agent-flow-claude/plan-usage.json`. The endpoint is not a public API and may change; the bar then shows only local numbers. Start with `--no-plan-usage` to turn it off.
 
+On macOS, Claude Code keeps its login in the Keychain rather than in `.credentials.json`, so plan limits show as unavailable there; local numbers still work.
+
 ## Credits and license
 
 agent-flow-claude is derived from [Agent Flow](https://github.com/patoles/agent-flow), created by [Simon Patole](https://github.com/patoles) for [Antics](https://antics.gg). The original code and this fork are licensed under Apache 2.0; see [LICENSE](LICENSE).

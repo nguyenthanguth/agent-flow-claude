@@ -9,7 +9,6 @@
 import * as http from 'http'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as os from 'os'
 
 import { AgentEvent, SessionInfo, ServerMessage, WatchedSession } from './core/protocol'
 import { TranscriptParser } from './core/transcript-parser'
@@ -20,12 +19,12 @@ import { UsageMonitor } from './usage-monitor'
 import { trackingFor, scaledBreakdown } from './core/usage'
 import {
   INACTIVITY_TIMEOUT_MS, SCAN_INTERVAL_MS, ACTIVE_SESSION_AGE_S, POLL_FALLBACK_MS,
-  SESSION_ID_DISPLAY, SYSTEM_PROMPT_BASE_TOKENS, ORCHESTRATOR_NAME,
+  SESSION_ID_DISPLAY, SYSTEM_PROMPT_BASE_TOKENS, ORCHESTRATOR_NAME, CLAUDE_PROJECTS_DIR,
 } from './core/constants'
 import { setLogLevel } from './core/logger'
 
 const MAX_EVENT_BUFFER = 5000
-const CLAUDE_DIR = path.join(os.homedir(), '.claude', 'projects')
+const CLAUDE_DIR = CLAUDE_PROJECTS_DIR
 
 let verbose = false
 

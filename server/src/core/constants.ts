@@ -3,6 +3,9 @@
  * Centralizes magic numbers and strings scattered across modules.
  */
 
+import * as os from 'os'
+import * as path from 'path'
+
 // ─── Timing ──────────────────────────────────────────────────────────────────
 
 /** How long to wait before declaring a session inactive (ms).
@@ -30,6 +33,9 @@ export const ACTIVE_SESSION_AGE_S = 10 * 60 // 10 minutes
 
 /** Default server port (SSE + UI) */
 export const DEFAULT_PORT = 3030
+
+/** Where Claude Code keeps session transcripts, one directory per project */
+export const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects')
 
 // ─── Text Truncation Limits ──────────────────────────────────────────────────
 

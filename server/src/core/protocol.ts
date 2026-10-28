@@ -61,13 +61,7 @@ export interface PlanLimit {
   active: boolean
 }
 
-export interface UsageTotals {
-  input: number
-  output: number
-  cacheRead: number
-  cacheWrite5m: number
-  cacheWrite1h: number
-}
+export type UsageTotals = import('./usage').UsageCounts
 
 export interface PlanUsageReport {
   status: 'ok' | 'signed-out' | 'expired' | 'unavailable' | 'disabled'
