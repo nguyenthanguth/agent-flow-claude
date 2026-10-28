@@ -1,1 +1,113 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Menlo, Consolas, ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --af-bg: #191816;
+  --af-surface: rgba(33, 32, 29, 0.96);
+  --af-border: rgba(255, 248, 235, 0.10);
+  --af-text: #edebe5;
+  --af-text-dim: #b7b4ab;
+  --af-accent: #d97757;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--af-bg);
+  color: var(--af-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(217, 119, 87, 0.35);
+}
+
+/* Panel surface — solid, quiet, rounded */
+.glass-card {
+  background: var(--af-surface);
+  border: 1px solid var(--af-border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 248, 235, 0.03) inset;
+}
+
+.glass-card input,
+.glass-card textarea,
+.glass-card select {
+  background: rgba(255, 248, 235, 0.04) !important;
+  border: 1px solid var(--af-border) !important;
+  color: var(--af-text) !important;
+  font-family: var(--font-sans);
+  border-radius: 8px;
+}
+
+.glass-card input::placeholder,
+.glass-card textarea::placeholder {
+  color: #8a877e;
+}
+
+.glass-card input:focus,
+.glass-card textarea:focus {
+  border-color: rgba(217, 119, 87, 0.55) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15);
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 248, 235, 0.14) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 248, 235, 0.14);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 248, 235, 0.24);
+  background-clip: padding-box;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(217, 119, 87, 0.7);
+  outline-offset: 2px;
+}

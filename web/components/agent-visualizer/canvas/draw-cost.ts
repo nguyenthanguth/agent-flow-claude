@@ -1,6 +1,6 @@
 import { Agent, ToolCallNode, NODE } from '@/lib/agent-types'
 import { COLORS } from '@/lib/colors'
-import { COST_RATE, MODEL_FAMILY_COST, COST_DRAW, COST_PANEL, MIN_VISIBLE_OPACITY } from '@/lib/canvas-constants'
+import { COST_RATE, MODEL_FAMILY_COST, COST_DRAW, COST_PANEL, MIN_VISIBLE_OPACITY, FONT_SANS } from '@/lib/canvas-constants'
 import { formatTokens } from '@/lib/utils'
 import { truncateText } from './draw-misc'
 
@@ -58,7 +58,7 @@ export function drawCostLabels(
 
     // Floating cost pill
     const label = `$${cost < 0.01 ? cost.toFixed(4) : cost.toFixed(3)}`
-    ctx.font = 'bold 9px monospace'
+    ctx.font = `600 10.5px ${FONT_SANS}`
     const labelW = ctx.measureText(label).width
     const pillW = labelW + COST_DRAW.pillPadding
     const pillH = COST_DRAW.pillHeight
@@ -183,13 +183,13 @@ export function drawCostSummaryPanel(
   let y = panelY + 8
 
   // Header: total cost
-  ctx.font = 'bold 11px monospace'
+  ctx.font = `600 12.5px ${FONT_SANS}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
   ctx.fillStyle = COLORS.costText
   ctx.fillText(`$${totalCost.toFixed(3)}`, panelX + COST_PANEL.contentPadding, y)
 
-  ctx.font = '9px monospace'
+  ctx.font = `10.5px ${FONT_SANS}`
   ctx.fillStyle = COLORS.textMuted
   ctx.fillText(`${formatTokens(totalTokens)} tokens`, panelX + COST_PANEL.contentPadding + ctx.measureText(`$${totalCost.toFixed(3)}`).width + 14, y + 2)
 
@@ -216,7 +216,7 @@ export function drawCostSummaryPanel(
     ctx.fill()
 
     // Agent name
-    ctx.font = '8px monospace'
+    ctx.font = `10px ${FONT_SANS}`
     ctx.fillStyle = COLORS.textPrimary
     ctx.textAlign = 'left'
     ctx.fillText(truncateText(ctx, a.name, barW - 50), panelX + COST_PANEL.contentPadding + COST_PANEL.barInset, y + 3)
@@ -233,7 +233,7 @@ export function drawCostSummaryPanel(
   if (toolList.length > 0) {
     y += sectionGap
 
-    ctx.font = '8px monospace'
+    ctx.font = `10px ${FONT_SANS}`
     ctx.fillStyle = COLORS.textMuted
     ctx.textAlign = 'left'
     ctx.fillText('BY TOOL', panelX + COST_PANEL.contentPadding, y)
@@ -258,7 +258,7 @@ export function drawCostSummaryPanel(
       ctx.globalAlpha = 1
 
       // Tool name
-      ctx.font = '8px monospace'
+      ctx.font = `10px ${FONT_SANS}`
       ctx.fillStyle = toolTypeColor(t.name)
       ctx.textAlign = 'left'
       ctx.fillText(truncateText(ctx, t.name, barW - 50), panelX + COST_PANEL.contentPadding + COST_PANEL.barInset, y + 3)

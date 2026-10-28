@@ -44,7 +44,7 @@ interface EventStreamResult {
 }
 
 /**
- * Connects to the Agent Flow server's SSE stream at /events.
+ * Connects to the agent-flow-claude server's SSE stream at /events.
  *
  * Supports multi-session: events are buffered per-session so switching
  * sessions replays the correct event history. The server replays every
@@ -204,6 +204,9 @@ export function useEventStream(): EventStreamResult {
   /** Switch session selection. Does NOT flush events — call flushSessionEvents
    *  from useLayoutEffect after the simulation state has been saved/swapped. */
   const selectSession = useCallback((sessionId: string | null) => {
+    // Re-selecting the session on screen must not arm a switch: the layout
+    // effect only runs on a change, so nothing would clear the pending flag.
+    if (sessionId === selectedSessionIdRef.current) return
     beginSwitch(sessionId)
     if (sessionId) {
       setSessionsWithActivity(prev => {

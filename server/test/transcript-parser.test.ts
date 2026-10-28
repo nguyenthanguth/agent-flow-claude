@@ -35,7 +35,7 @@ function makeSession(): WatchedSession {
     subagentWatchers: new Map(),
     spawnedSubagents: new Set(),
     inlineProgressAgents: new Set(),
-    subagentsDirWatcher: null,
+    subagentsDirWatcher: null, subagentsScanned: false,
     subagentsDir: null,
     label: 'Session',
     labelSet: true,

@@ -32,45 +32,44 @@ export function SessionTabs({
   }, [selectedSessionId])
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1.5">
       {sessions.map(session => {
         const isSelected = session.id === selectedSessionId
         const isActive = session.status === 'active'
         const hasActivity = sessionsWithActivity.has(session.id)
-        // Green dot: session is active, OR has unseen background activity
-        const showGreen = isActive || hasActivity
         return (
           <button
             key={session.id}
             ref={(el) => setButtonRef(session.id, el)}
             onClick={() => onSelectSession(session.id)}
-            className="group px-1.5 py-0.5 rounded transition-all flex items-center gap-1"
+            title={session.label}
+            className="group h-9 pl-3 pr-2 rounded-xl transition-colors flex items-center gap-2 text-[12px] font-medium"
             style={{
               flexShrink: 0,
               whiteSpace: 'nowrap',
-              background: isSelected ? COLORS.tabSelectedBg : COLORS.tabInactiveBg,
-              border: `1px solid ${isSelected ? COLORS.tabSelectedBorder : COLORS.tabInactiveBorder}`,
-              color: isSelected ? COLORS.holoBright : COLORS.textMuted,
+              background: isSelected ? COLORS.cardBgSelected : COLORS.glassBg,
+              border: `1px solid ${isSelected ? COLORS.tabSelectedBorder : COLORS.glassBorder}`,
+              color: isSelected ? COLORS.textPrimary : COLORS.textDim,
             }}
           >
             <span
-              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{
-                background: showGreen ? COLORS.complete : COLORS.idle + '40',
-                boxShadow: showGreen ? `0 0 4px ${COLORS.complete}` : 'none',
-                animation: hasActivity && !isSelected ? 'pulse 1.5s infinite' : 'none',
-              }}
+              className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${hasActivity && !isSelected ? 'animate-pulse' : ''}`}
+              style={{ background: hasActivity && !isSelected ? COLORS.unreadDot : isActive ? COLORS.complete : COLORS.paused }}
             />
-            {session.label}
+            <span className="max-w-[240px] overflow-hidden text-ellipsis">{session.label}</span>
             <span
-              className="ml-0.5 opacity-0 group-hover:opacity-60 transition-opacity cursor-pointer"
-              style={{ color: COLORS.tabClose, fontSize: 8, lineHeight: '10px' }}
+              role="button"
+              aria-label="Close session tab"
+              className="w-5 h-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: COLORS.textMuted }}
               onClick={(e) => {
                 e.stopPropagation()
                 onCloseSession(session.id)
               }}
             >
-              ✕
+              <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+              </svg>
             </span>
           </button>
         )

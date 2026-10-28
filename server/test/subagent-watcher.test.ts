@@ -39,7 +39,7 @@ function setup() {
     pendingToolCalls: new Map(), seenToolUseIds: new Set(), seenMessageHashes: new Set(),
     sessionDetected: true, sessionCompleted: false, lastActivityTime: Date.now(), inactivityTimer: null,
     subagentWatchers: new Map(), spawnedSubagents: new Set(), inlineProgressAgents: new Set(),
-    subagentsDirWatcher: null, subagentsDir,
+    subagentsDirWatcher: null, subagentsDir, subagentsScanned: false,
     label: 'Session', labelSet: true, model: null, modelDetectedAgents: new Map(),
     contextBreakdown: { systemPrompt: 0, userMessages: 0, toolResults: 0, reasoning: 0, subagentResults: 0 },
   }
@@ -113,6 +113,17 @@ describe('subagent watcher', () => {
     pollSubagent(delegate, parser, file, SESSION_ID)
     pollSubagent(delegate, parser, file, SESSION_ID)
     assert.deepEqual(events.filter(e => e.type === 'agent_complete').map(e => e.payload), [{ name: 'Review the diff' }])
+  })
+
+  it('replays a subagent created while watching from its first line', () => {
+    const { events, delegate, parser, writeSubagent } = setup()
+    scanSubagentsDir(delegate, parser, SESSION_ID) // attach: nothing there yet
+    writeSubagent('a1', { description: 'Review the diff', toolUseId: 'toolu_1' }, [pendingBash('t1')])
+    scanSubagentsDir(delegate, parser, SESSION_ID)
+
+    assert.deepEqual(spawns(events), ['Review the diff'])
+    const starts = events.filter(e => e.type === 'tool_call_start')
+    assert.deepEqual(starts.map(e => [e.payload.agent, e.payload.tool]), [['Review the diff', 'Bash']])
   })
 
   it('waits for the meta file before naming a brand-new subagent', () => {

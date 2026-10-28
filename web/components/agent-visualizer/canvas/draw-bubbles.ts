@@ -1,6 +1,6 @@
 import { Agent, NODE } from '@/lib/agent-types'
 import { COLORS, withAlpha } from '@/lib/colors'
-import { BUBBLE_MAX_W, BUBBLE_GAP, BUBBLE_MAX_LINES, AGENT_DRAW, BUBBLE_DRAW } from '@/lib/canvas-constants'
+import { BUBBLE_MAX_W, BUBBLE_GAP, BUBBLE_MAX_LINES, AGENT_DRAW, BUBBLE_DRAW, FONT_SANS } from '@/lib/canvas-constants'
 import { bubbleAlpha } from './bubble-utils'
 import { measureTextCached } from './render-cache'
 
@@ -29,19 +29,20 @@ export function drawMessageBubblesWorld(
       const isThinking = role === 'thinking'
       const bgColor = isThinking ? COLORS.bubbleThinkingBase : role === 'user' ? COLORS.bubbleUserBase : COLORS.bubbleAssistantBase
       const textColor = isThinking ? COLORS.roleThinkingText : role === 'user' ? COLORS.roleUserText : COLORS.roleAssistantText
-      const label = isThinking ? '\uD83D\uDCAD THINKING' : role === 'user' ? 'USER' : 'CLAUDE'
+      const label = isThinking ? 'THINKING' : role === 'user' ? 'USER' : 'CLAUDE'
+      const labelColor = isThinking ? COLORS.contextReasoning : role === 'user' ? COLORS.contextUser : COLORS.assistantLabel
 
-      // Thinking bubbles: smaller font, tighter spacing, more translucent
+      // Thinking bubbles: smaller font, tighter spacing, slightly translucent
       const style = isThinking ? BUBBLE_DRAW.thinking : BUBBLE_DRAW.normal
 
-      const font = `${style.fontSize}px monospace`
+      const font = `${style.fontSize}px ${FONT_SANS}`
       ctx.font = font
       // Cache wrapped lines on the bubble to avoid re-wrapping every frame
       let allLines: string[]
       if (bubble._cachedWrappedLines && bubble._cachedWrappedFont === font) {
         allLines = bubble._cachedWrappedLines
       } else {
-        allLines = wrapText(ctx, text, BUBBLE_MAX_W - 16)
+        allLines = wrapText(ctx, text, BUBBLE_MAX_W - style.padding * 2)
         bubble._cachedWrappedLines = allLines
         bubble._cachedWrappedFont = font
       }
@@ -57,7 +58,7 @@ export function drawMessageBubblesWorld(
       bubble._cachedLines = lines.length
 
       ctx.save()
-      ctx.globalAlpha = isThinking ? alpha * 0.7 : alpha
+      ctx.globalAlpha = isThinking ? alpha * 0.85 : alpha
 
       if (firstVisible) {
         const triY = cursorY + bubbleH / 2
@@ -65,27 +66,27 @@ export function drawMessageBubblesWorld(
         ctx.moveTo(anchorX, triY - BUBBLE_DRAW.triOffset)
         ctx.lineTo(anchorX - BUBBLE_DRAW.triWidth, triY)
         ctx.lineTo(anchorX, triY + BUBBLE_DRAW.triOffset)
-        ctx.fillStyle = withAlpha(bgColor, 0.12)
+        ctx.fillStyle = withAlpha(bgColor, 0.96)
         ctx.fill()
         firstVisible = false
       }
 
       ctx.beginPath()
       ctx.roundRect(anchorX, cursorY, bubbleW, bubbleH, BUBBLE_DRAW.borderRadius)
-      ctx.fillStyle = withAlpha(bgColor, isThinking ? 0.08 : 0.12)
+      ctx.fillStyle = withAlpha(bgColor, 0.96)
       ctx.fill()
-      ctx.strokeStyle = withAlpha(bgColor, isThinking ? 0.15 : 0.25)
-      ctx.lineWidth = 0.5
+      ctx.strokeStyle = labelColor + '40'
+      ctx.lineWidth = 1
       ctx.stroke()
 
-      ctx.font = `${style.labelSize}px monospace`
+      ctx.font = `600 ${style.labelSize}px ${FONT_SANS}`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
-      ctx.fillStyle = textColor + (isThinking ? '60' : '80')
-      ctx.fillText(label, anchorX + style.padding, cursorY + 3)
+      ctx.fillStyle = labelColor
+      ctx.fillText(label, anchorX + style.padding, cursorY + style.padding * 0.7)
 
-      ctx.font = `italic ${style.fontSize}px monospace`
-      ctx.fillStyle = textColor + (isThinking ? 'b0' : '')
+      ctx.font = font
+      ctx.fillStyle = textColor
       for (let i = 0; i < lines.length; i++) {
         ctx.fillText(lines[i], anchorX + style.padding, cursorY + style.headerH + i * style.lineH)
       }

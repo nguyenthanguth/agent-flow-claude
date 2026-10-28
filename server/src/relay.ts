@@ -13,8 +13,9 @@ import * as os from 'os'
 
 import { AgentEvent, SessionInfo, ServerMessage, WatchedSession } from './core/protocol'
 import { TranscriptParser } from './core/transcript-parser'
-import { readNewFileLines, foldPathCase } from './core/fs-utils'
+import { readNewFileLines, completeLinesSize, foldPathCase } from './core/fs-utils'
 import { scanSubagentsDir, pollSubagent } from './core/subagent-watcher'
+import { appendCapped } from './event-buffer'
 import {
   INACTIVITY_TIMEOUT_MS, SCAN_INTERVAL_MS, ACTIVE_SESSION_AGE_S, POLL_FALLBACK_MS,
   SESSION_ID_DISPLAY, SYSTEM_PROMPT_BASE_TOKENS, ORCHESTRATOR_NAME,
@@ -53,12 +54,7 @@ function broadcastEvent(event: AgentEvent) {
   log(`[event] ${event.type} (session ${event.sessionId?.slice(0, SESSION_ID_DISPLAY) || '?'})`)
 
   if (event.sessionId) {
-    let buf = eventBuffer.get(event.sessionId) || []
-    buf.push(event)
-    if (buf.length > MAX_EVENT_BUFFER) {
-      buf = buf.slice(buf.length - MAX_EVENT_BUFFER)
-    }
-    eventBuffer.set(event.sessionId, buf)
+    eventBuffer.set(event.sessionId, appendCapped(eventBuffer.get(event.sessionId) || [], event, MAX_EVENT_BUFFER))
   }
 
   broadcast({ type: 'agent-event', event })
@@ -179,7 +175,7 @@ function watchSession(sessionId: string, filePath: string) {
     subagentWatchers: new Map(),
     spawnedSubagents: new Set(),
     inlineProgressAgents: new Set(),
-    subagentsDirWatcher: null,
+    subagentsDirWatcher: null, subagentsScanned: false,
     subagentsDir: path.join(path.dirname(filePath), sessionId, 'subagents'),
     label: `Session ${sessionId.slice(0, SESSION_ID_DISPLAY)}`, labelSet: false,
     model: null,
@@ -188,9 +184,10 @@ function watchSession(sessionId: string, filePath: string) {
   }
   sessions.set(sessionId, session)
 
-  const stat = fs.statSync(filePath)
-  const catchUpEntries = parser.prescanExistingContent(filePath, stat.size, session)
-  session.fileSize = stat.size
+  // Prescan complete lines only — a line still being written is picked up by readNewLines
+  const size = completeLinesSize(filePath, fs.statSync(filePath).size)
+  const catchUpEntries = parser.prescanExistingContent(filePath, size, session)
+  session.fileSize = size
   parser.extractSessionLabel(catchUpEntries, session)
 
   session.sessionDetected = true

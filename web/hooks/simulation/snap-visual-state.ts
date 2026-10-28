@@ -1,25 +1,23 @@
 import type { SimulationState } from './types'
-import { TOOL_MIN_DISPLAY_S, TOOL_MAX_RUNNING_S, DISCOVERY_HOLD_S, BUBBLE_VISIBLE_S, MIN_VISIBLE_OPACITY } from '@/lib/canvas-constants'
+import { TOOL_MIN_DISPLAY_S, TOOL_MAX_RUNNING_S, DISCOVERY_HOLD_S, BUBBLE_VISIBLE_S, MIN_VISIBLE_OPACITY, COMPLETED_AGENT_OPACITY } from '@/lib/canvas-constants'
 
 /** Snap visual properties to their analytically correct values at a given time (used during seek) */
 export function snapVisualState(state: SimulationState, targetTime: number): SimulationState {
 
   const newAgents = new Map(state.agents)
   for (const [id, agent] of newAgents) {
-    if (agent.state === 'complete' && !agent.isMain) {
-      // Remove completed sub-agents entirely during seek
-      newAgents.delete(id)
-      continue
-    }
     const snapped = { ...agent }
     if (agent.state !== 'complete') {
       snapped.opacity = 1
       snapped.scale = 1
       snapped.timeAlive = targetTime - agent.spawnTime
-    } else {
-      // Main agent that completed
+    } else if (agent.isMain) {
       snapped.opacity = 0.5
       snapped.scale = 1
+    } else {
+      // Finished subagents stay on the graph, dimmed (matches animateAgents)
+      snapped.opacity = COMPLETED_AGENT_OPACITY
+      snapped.scale = 0.85
     }
     snapped.messageBubbles = agent.messageBubbles.filter(b => targetTime - b.time <= BUBBLE_VISIBLE_S)
     newAgents.set(id, snapped)

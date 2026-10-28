@@ -1,83 +1,90 @@
 # CLAUDE.md
 
-Bản fork cá nhân của [patoles/agent-flow](https://github.com/patoles/agent-flow): công cụ visualize real-time các session Claude Code (node graph, tool call, subagent, timeline). Mục tiêu của fork: tuỳ biến và sửa lỗi cho nhu cầu cá nhân. Fork này **chỉ hỗ trợ Claude Code**: toàn bộ phần Codex của upstream đã bị xoá. Khi merge từ upstream, bỏ qua các thay đổi liên quan tới Codex (`codex-*.ts`, `runtime === 'codex'`, OpenAI logo, GPT model). Không cần giữ tương thích với quy trình đóng góp upstream (CLA, PR template), nhưng nên giữ diff gọn để còn merge được từ upstream.
+**agent-flow-claude** — bản fork cá nhân của [patoles/agent-flow](https://github.com/patoles/agent-flow), đã được làm lại cho gọn: **chỉ visualize real-time các session Claude Code trên trình duyệt**. Không còn VS Code extension, Codex, hook hay telemetry. Server chỉ *đọc* transcript mà Claude Code tự ghi ra, không cài gì vào `~/.claude/settings.json`.
 
-Trả lời người dùng bằng tiếng Việt. Code, comment, commit message và CHANGELOG viết bằng tiếng Anh như phần còn lại của repo.
+Trả lời người dùng bằng tiếng Việt. Code, comment, commit message và CHANGELOG viết bằng tiếng Anh.
 
 ## Cấu trúc
 
-pnpm workspace (`pnpm-workspace.yaml` chỉ gồm `extension` và `web`; `app` và `scripts` dùng chung dependency ở root).
+pnpm workspace gồm `server` và `web`.
 
 | Thư mục | Vai trò |
 |---|---|
-| `extension/src/` | VS Code extension **và** lõi xử lý dùng chung: hook server, transcript parser, session/subagent watcher, protocol |
-| `scripts/` | `relay.ts` (relay dùng chung cho dev và app: nhận event → stream SSE), `dev-relay.ts`, `setup.js` (cài hook vào `~/.claude/settings.json`), `telemetry*`, `vscode-shim.js` |
-| `app/` | `npx agent-flow-app`: server HTTP phục vụ UI + SSE, bundle bằng esbuild (`app/build.js`), alias `vscode` → `scripts/vscode-shim.js` |
-| `web/` | UI React 19 + Canvas. Next.js cho `pnpm run dev`, Vite cho webview (`vite.config.webview.ts`) và app (`vite.config.app.ts`) |
+| `server/src/core/` | Lõi: `transcript-parser.ts` (JSONL → `AgentEvent`), `subagent-watcher.ts` (tail transcript subagent + `.meta.json`), `protocol.ts` (kiểu dữ liệu), `constants.ts`, `tool-summarizer.ts`, `token-estimator.ts`, `fs-utils.ts`, `logger.ts` |
+| `server/src/relay.ts` | Tìm session đang hoạt động của workspace, watch/poll file, buffer event theo session, stream SSE |
+| `server/src/server.ts`, `static.ts`, `main.ts`, `args.ts` | HTTP server (`/events` + phục vụ UI đã build), CLI |
+| `server/test/` | `node:test` cho parser, subagent watcher, fs-utils |
+| `web/` | UI React 19 + Canvas, build bằng Vite. `hooks/use-event-stream.ts` (SSE), `hooks/use-agent-simulation.ts` + `hooks/simulation/*` (event → state), `components/agent-visualizer/canvas/draw-*` (vẽ) |
 
-Luồng dữ liệu chính:
+Luồng dữ liệu:
 
 ```
-Claude Code hooks → ~/.claude/agent-flow/hook.js → HookServer (extension/src/hook-server.ts) ─┐
-~/.claude/projects/**.jsonl → SessionWatcher + TranscriptParser ──────────────────────────────┴→ AgentEvent (protocol.ts)
-                                                                  ↓
-        VS Code: webview-provider.ts (postMessage)   |   dev/app: scripts/relay.ts (SSE /events)
-                                                                  ↓
-        web/hooks/use-vscode-bridge.ts → use-agent-simulation.ts → web/hooks/simulation/* → canvas/draw-*
+~/.claude/projects/<encoded>/<session>.jsonl ──► relay.ts + TranscriptParser ─┐
+~/.claude/projects/<encoded>/<session>/subagents/agent-<id>.jsonl (+ .meta.json) ─► subagent-watcher.ts ─┤
+                                                                               ▼
+                                     AgentEvent ─► buffer theo session ─► SSE /events
+                                                                               ▼
+web: use-event-stream.ts ─► use-agent-simulation.ts ─► simulation/handle-*-events.ts ─► canvas/draw-*
 ```
 
-Những điểm cần nhớ:
+## Bất biến quan trọng
 
-- `extension/src/protocol.ts` là hợp đồng giữa backend và UI. Đổi `AgentEvent` / message type thì phải sửa cả hai phía (extension + `web/lib/bridge-types.ts`, `web/hooks/simulation/*`).
-- Code trong `extension/src/` chạy được cả **trong VS Code** và **ngoài VS Code** (qua `vscode-shim.js`). Shim chỉ có `EventEmitter`, `workspace.workspaceFolders`, `workspace.getConfiguration`, `window.showInformationMessage`. File nào được `scripts/relay.ts` import thì không được dùng API `vscode` nào khác.
-- `extension/src/hook-entries.ts` và `scripts/setup.js` ghi vào `~/.claude/settings.json` của người dùng. Bất biến: chỉ đụng tới hook của Agent Flow, không ghi đè file không parse được, ghi atomic (xem CHANGELOG 0.9.2 / #73).
-- Path trên Windows: so sánh path phải case-fold (`foldPathCase` trong `fs-utils.ts`). Drive letter `c:\` và `C--` đều có thể xuất hiện.
-- Hằng số timeout/interval nằm trong `extension/src/constants.ts`; dùng lại, đừng hardcode.
+- **Transcript là nguồn sự thật duy nhất.** Đừng thêm lại hook: hook từng gây event trùng với tên agent khác (`Explore-7ea23e`) và `Stop` hook làm toàn bộ subagent đang chạy bị đánh dấu xong rồi biến mất.
+- **Subagent:**
+  - Tên lấy từ `description` trong `.meta.json` (giống `description` của tool `Agent`). Watcher chờ tối đa 5 giây để file meta xuất hiện.
+  - Subagent chạy nền hoàn thành khi có `<task-notification>` (Claude Code 2.1+ ghi dưới dạng entry `attachment` với `attachment.prompt`), **hoặc** khi `.meta.json` có `finished: true`, tuỳ cái nào đến trước. Xem `finishBackgroundSubagent`.
+  - Khi attach vào session đang chạy, prescan **không** đánh dấu subagent là đã spawn; watcher spawn những subagent còn đang chạy.
+- **SSE:** mỗi kết nối bắt đầu bằng `reset` rồi phát lại toàn bộ session. Phía web tăng `epoch` để restart simulation; đừng để reconnect nối thêm event vào buffer cũ.
+- **Inactivity** (5 phút) chỉ đưa orchestrator về `agent_idle`, không `agent_complete`: `agent_complete` của agent cha sẽ cascade sang mọi agent con.
+- **Agent con xong việc** chỉ mờ đi (`COMPLETED_AGENT_OPACITY`), không bị xoá khỏi đồ thị.
+- `server/src/core/protocol.ts` là hợp đồng với `web/lib/bridge-types.ts` và `web/hooks/simulation/*`. Đổi một bên thì sửa cả hai (xem skill `protocol-change`).
+- Path trên Windows: so sánh phải case-fold (`foldPathCase`). Workspace được mã hoá bằng cách thay mọi ký tự không phải chữ/số bằng `-` (`C:\Users\X\proj` → `C--Users-X-proj`).
 
 ## Lệnh
 
-Cần Node 20+ và pnpm 10 (CI dùng Node 22, pnpm 10). Máy này đã có Node 22 và pnpm 10 (cài global qua `npm i -g pnpm@10`).
+Node 20+ và pnpm 10 (máy này đã cài sẵn cả hai).
 
 ```bash
-pnpm i                         # cài dependency cho toàn workspace
-pnpm run setup                 # cài hook Claude Code (một lần)
-pnpm run dev                   # Next.js (3000) + relay (3001)
-pnpm run dev:demo              # UI với dữ liệu mock, không cần relay
-pnpm run build:all             # webview + extension
-pnpm run build:app             # gói app/dist (npx agent-flow-app)
+pnpm i
+pnpm dev          # server :3030 (tsx watch) + Vite :3000, /events được proxy sang server
+pnpm dev:demo     # chỉ UI, chạy kịch bản demo (?demo)
+pnpm build        # build UI + bundle server → server/dist/
+pnpm start        # node server/dist/agent-flow-claude.js
+pnpm test         # node:test: server/test, web/hooks, web/lib
+pnpm typecheck    # tsc cho server và web
 ```
 
-Kiểm tra, giống hệt CI (`.github/workflows/ci.yml`). Chạy hết trước khi coi một thay đổi là xong:
+Theo dõi project khác khi dev: `AGENT_FLOW_CLAUDE_WORKSPACE=/đường/dẫn/project pnpm dev`, hoặc `node server/dist/agent-flow-claude.js -w <dir>`.
 
-```bash
-pnpm test                                 # node:test: scripts/**, app/src/**, web/hooks/**
-pnpm --dir extension test                 # node:test: extension/test/**
-pnpm --filter agent-flow run lint         # tsc --noEmit cho extension
-pnpm --dir web exec tsc --noEmit          # typecheck web
-```
+Chạy một file test: `node --import tsx --test server/test/<file>.test.ts`.
 
-Chạy một file test: `node --import tsx --test path/to/file.test.ts` (ở root), hoặc `pnpm --dir extension exec tsx --test test/<file>.test.ts`.
+CI (`.github/workflows/ci.yml`) chạy `pnpm test`, `pnpm typecheck`, `pnpm build` trên mỗi push/PR và upload `server/dist/` làm artifact `agent-flow-claude`. Theo dõi bằng `gh run list` / `gh run watch` (đã được phép dùng GitHub Actions).
 
 ### Windows
 
-- `.npmrc` đặt `shell-emulator=true`, nên pnpm chạy script qua shell cross-platform thay vì `cmd.exe`. Nhờ vậy cú pháp POSIX như `NEXT_PUBLIC_DEMO=0 ...` hay `&&` trong `package.json` chạy được trên Windows. Đừng xoá dòng này.
-- Ngoại lệ: `vscode:prepublish` (`cp ...`) do `vsce` gọi qua **npm**, không phải pnpm, nên không được hưởng `.npmrc` này (xem skill `install-local`).
-- `pnpm run dev` cần cổng 3000 (web) và 3001 (relay). Nếu đang chạy `npx agent-flow-app` (cũng dùng 3001), relay sẽ báo `EADDRINUSE`.
-- Dùng Bash tool (Git Bash) cho các lệnh `pnpm`; PowerShell 5.1 không hỗ trợ `&&`.
+- `.npmrc` đặt `shell-emulator=true` để cú pháp POSIX (`VAR=x cmd`, `&&`) trong script chạy được trên Windows. Đừng xoá.
+- Cổng mặc định là 3030, để không đụng app `npx agent-flow-app` của upstream (3001) nếu nó còn chạy.
+- Dùng Bash tool (Git Bash) cho `pnpm`; PowerShell 5.1 không có `&&`.
+
+## Kiểm tra giao diện
+
+Không có test DOM. Để xem UI thật, chạy `pnpm dev:web` rồi chụp bằng Chrome headless qua DevTools Protocol, đợi vài giây cho kịch bản chạy (`?demo`). Ở chế độ live, có thể tạo một subagent probe (ví dụ chạy vài lệnh `sleep`) để thấy subagent real-time.
 
 ## Quy ước code
 
-- TypeScript strict, 2 space, **không dấu chấm phẩy**, nháy đơn. JS thuần (`setup.js`, `build.js`, `vscode-shim.js`) dùng `'use strict'` + CommonJS.
-- Mỗi file mở đầu bằng block comment ngắn mô tả vai trò. Phân đoạn bằng `// ─── Tên đoạn ───`. Comment giải thích *tại sao*, kèm số issue khi có (`(#73)`).
-- Test dùng `node:test` + `node:assert/strict`, đặt cạnh code (`*.test.ts`) ở `scripts/`, `app/src/`, `web/hooks/`, hoặc trong `extension/test/`. Fixture ở `extension/test/fixtures/`. Test đụng filesystem dùng `fs.mkdtempSync(os.tmpdir())`, không bao giờ đụng `~/.claude` thật.
-- Không thêm dependency mới nếu không thật cần. Web chỉ có `d3-force`, `next`, `react`.
-- Thay đổi hành vi người dùng thấy được thì thêm dòng vào `extension/CHANGELOG.md` (theo format sẵn có: `- Fix: ...` / `- **Tính năng** ...`).
+- TypeScript strict, 2 space, **không dấu chấm phẩy**, nháy đơn. Mỗi file mở đầu bằng block comment ngắn; phân đoạn bằng `// ─── Tên ───`; comment giải thích *tại sao*.
+- Màu chỉ khai báo trong `web/lib/colors.ts` (bảng màu ấm, màu nhấn clay `#d97757`); màu trạng thái phải là hex 6 chữ số vì code vẽ nối thêm byte alpha. Font canvas dùng `FONT_SANS` / `FONT_MONO` trong `web/lib/canvas-constants.ts`; monospace chỉ dành cho code và tham số tool.
+- Test dùng `node:test` + `node:assert/strict`, filesystem dùng `fs.mkdtempSync(os.tmpdir())`, không bao giờ đụng `~/.claude` thật.
+- Không thêm dependency nếu không thật cần.
+- Thay đổi người dùng thấy được → thêm dòng vào `CHANGELOG.md` (mục `Unreleased (fork)`).
 
 ## Git
 
-- Remote `origin` là fork cá nhân (`nguyenthanguth/agent-flow`), `upstream` là `patoles/agent-flow`. **Không tạo nhánh**: commit thẳng vào `main` rồi `git push origin main`. Chỉ commit/push khi người dùng yêu cầu.
-- Commit theo Conventional Commits như lịch sử repo: `fix: ...`, `feat: ...`, `chore: ...`, `docs: ...`.
-- `.claude/` đang nằm trong `.gitignore` của upstream, nên các agent trong `.claude/agents/` mặc định không được commit.
+- `origin` là fork cá nhân (`nguyenthanguth/agent-flow-claude`), `upstream` là `patoles/agent-flow`. **Không tạo nhánh**: commit thẳng vào `main` rồi `git push origin main`. Chỉ commit/push khi người dùng yêu cầu.
+- Conventional Commits: `fix:`, `feat:`, `refactor:`, `chore:`, `docs:`.
+- Thương hiệu: "Agent Flow" và logo là của Simon Patole (`TRADEMARK.md`). README phải luôn ghi rõ dự án *dựa trên* Agent Flow và không phải bản chính thức; không dùng logo gốc. Tên `agent-flow-claude` là lựa chọn của người dùng, dù đã được báo là có thể bị coi là dễ nhầm lẫn.
+- Fork đã khác upstream rất nhiều (bỏ `extension/`, `scripts/`, `app/`). Merge từ upstream chỉ nên cherry-pick các bản sửa parser liên quan (skill `sync-upstream`).
+- `.claude/` nằm trong `.gitignore`, nên agents và skills không được commit.
 
 ## Agent team
 
@@ -85,11 +92,9 @@ Có 4 subagent trong `.claude/agents/`:
 
 | Agent | Việc |
 |---|---|
-| `leader` | Phân tích yêu cầu, đọc code, lập kế hoạch, chia việc và điều phối coder → tester → reviewer |
+| `leader` | Phân tích yêu cầu, đọc code, lập kế hoạch, điều phối coder → tester → reviewer |
 | `coder` | Implement / sửa lỗi theo kế hoạch, diff tối thiểu |
-| `tester` | Viết test tái hiện lỗi hoặc cover tính năng, chạy toàn bộ check của CI |
-| `reviewer` | Review diff (chỉ đọc): đúng/sai, regression, bất biến của repo |
+| `tester` | Viết test tái hiện lỗi hoặc cover tính năng, chạy toàn bộ check |
+| `reviewer` | Review diff (chỉ đọc) |
 
-Quy trình chuẩn cho một bug fix: leader lập kế hoạch → tester viết test fail tái hiện lỗi → coder sửa cho test pass → tester chạy toàn bộ check → reviewer review → leader tổng kết. Việc nhỏ (một dòng, đổi text) thì làm trực tiếp, không cần cả quy trình.
-
-Subagent không gọi được subagent khác. Muốn `leader` tự điều phối team thì chạy nó làm agent chính: `claude --agent leader`. Khi được gọi như subagent thường, leader chỉ trả về kế hoạch để session chính điều phối.
+Quy trình cho một bug fix: leader lập kế hoạch → tester viết test fail → coder sửa → tester chạy check → reviewer review. Việc nhỏ thì làm trực tiếp. Muốn leader tự điều phối thì chạy `claude --agent leader` (subagent không gọi được subagent khác).

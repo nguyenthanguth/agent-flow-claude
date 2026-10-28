@@ -47,7 +47,7 @@ export function GlassContextMenu({ position, items, onClose }: ContextMenuProps)
                   item.onClick()
                   onClose()
                 }}
-                className="w-full px-3 py-1.5 text-left text-[11px] font-mono transition-colors hover:bg-white/5"
+                className="w-full px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-white/5"
                 style={{ color: item.danger ? COLORS.error : COLORS.textPrimary }}
               >
                 {item.label}

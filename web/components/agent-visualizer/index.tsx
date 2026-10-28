@@ -262,9 +262,16 @@ export function AgentVisualizer() {
       {/* Empty state when no demo and no live data */}
       {isEmpty && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="text-center" style={{ fontFamily: "'SF Mono', 'Fira Code', monospace" }}>
-            <div className="text-sm" style={{ color: '#66ccff80' }}>WAITING FOR AGENT SESSION</div>
-            <div className="mt-2 text-xs" style={{ color: '#66ccff40' }}>Start a Claude Code session to see activity</div>
+          <div className="text-center max-w-sm px-6">
+            <div className="mx-auto mb-5 w-14 h-14 rounded-full flex items-center justify-center" style={{ border: `2px solid ${COLORS.holoBase}55` }}>
+              <span className="w-3 h-3 rounded-full animate-pulse" style={{ background: COLORS.holoBase }} />
+            </div>
+            <div className="text-[15px] font-semibold" style={{ color: COLORS.textPrimary }}>Waiting for a Claude Code session</div>
+            <div className="mt-2 text-[13px] leading-relaxed" style={{ color: COLORS.textMuted }}>
+              {bridge.connectionStatus === 'disconnected'
+                ? 'Cannot reach the agent-flow-claude server. Is it running?'
+                : 'Start or continue a session in this project and its agents will appear here.'}
+            </div>
           </div>
         </div>
       )}
@@ -404,6 +411,7 @@ export function AgentVisualizer() {
         onSelectSession={bridge.selectSession}
         onCloseSession={handleCloseSession}
         connectionStatus={bridge.connectionStatus}
+        isDemo={bridge.useMockData}
         agentCount={agents.size}
         totalTokens={totalTokens}
         showFileAttention={showFileAttention}

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { TimelineEntry, Z } from '@/lib/agent-types'
 import { COLORS } from '@/lib/colors'
+import { FONT_SANS } from '@/lib/canvas-constants'
 import { PanelHeader, SlidingPanel } from './shared-ui'
 
 interface TimelinePanelProps {
@@ -15,7 +16,7 @@ interface TimelinePanelProps {
 const ROW_HEIGHT = 22
 const HEADER_HEIGHT = 20
 const LABEL_WIDTH = 90
-const FONT = '9px monospace'
+const FONT = `11px ${FONT_SANS}`
 
 // ─── Legend (static DOM — no perf cost) ─────────────────────────────────────
 
@@ -193,7 +194,7 @@ export function TimelinePanel({ visible, timelineEntries, currentTime, onClose }
     >
       <div className="glass-card relative">
         <PanelHeader onClose={onClose}>
-          <span className="text-[10px] font-mono tracking-wider" style={{ color: COLORS.textPrimary }}>
+          <span className="text-[12px] tracking-wider" style={{ color: COLORS.textPrimary }}>
             EXECUTION TIMELINE
           </span>
         </PanelHeader>
@@ -209,7 +210,7 @@ export function TimelinePanel({ visible, timelineEntries, currentTime, onClose }
             {LEGEND_ITEMS.map(item => (
               <div key={item.label} className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-sm" style={{ background: item.color + '70' }} />
-                <span className="text-[9px] font-mono" style={{ color: COLORS.textMuted }}>{item.label}</span>
+                <span className="text-[11px]" style={{ color: COLORS.textMuted }}>{item.label}</span>
               </div>
             ))}
           </div>

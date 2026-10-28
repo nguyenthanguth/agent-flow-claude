@@ -20,7 +20,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { AgentEvent, SubagentState, WatchedSession, emitSubagentSpawn } from './protocol'
 import { SESSION_ID_DISPLAY, ORCHESTRATOR_NAME, ARGS_MAX, generateSubagentFallbackName, resolveSubagentChildName } from './constants'
-import { readNewFileLines, readFileChunk } from './fs-utils'
+import { readNewFileLines, readFileChunk, completeLinesSize } from './fs-utils'
 import { TranscriptParser } from './transcript-parser'
 import { createLogger } from './logger'
 
@@ -53,8 +53,17 @@ function metaPathFor(jsonlPath: string): string {
   return jsonlPath.replace(/\.jsonl$/, '.meta.json')
 }
 
-function fileAgeMs(filePath: string): number {
-  try { return Date.now() - fs.statSync(filePath).birthtimeMs } catch { return Infinity }
+/** When each not-yet-watched subagent file was first seen. Tracked in memory
+ *  because file birth times are unreliable (0 on some Linux filesystems). */
+const firstSeenAt = new Map<string, number>()
+
+function msSinceFirstSeen(filePath: string): number {
+  let seen = firstSeenAt.get(filePath)
+  if (seen === undefined) {
+    seen = Date.now()
+    firstSeenAt.set(filePath, seen)
+  }
+  return Date.now() - seen
 }
 
 /** Read the .meta.json sidecar next to a subagent transcript. */
@@ -90,6 +99,11 @@ export function scanSubagentsDir(
     } catch (err) { log.debug('Subagent dir watch failed:', err) }
   }
 
+  // Files present at the first scan are history we attached to mid-session;
+  // anything that shows up later was created while we were watching.
+  const live = session.subagentsScanned
+  session.subagentsScanned = true
+
   const subDir = session.subagentsDir
   if (!fs.existsSync(subDir)) return
 
@@ -101,12 +115,53 @@ export function scanSubagentsDir(
       // The transcript can appear a moment before its meta file. Starting
       // without it would name the node "subagent-N" instead of its
       // description, so wait for it — the poll rescans every second.
-      if (!fs.existsSync(metaPathFor(filePath)) && fileAgeMs(filePath) < META_WAIT_MS) continue
-      startWatchingSubagentFile(delegate, parser, filePath, sessionId)
+      if (!fs.existsSync(metaPathFor(filePath)) && msSinceFirstSeen(filePath) < META_WAIT_MS) continue
+      firstSeenAt.delete(filePath)
+      if (live) startLiveSubagentFile(delegate, parser, filePath, sessionId)
+      else startWatchingSubagentFile(delegate, parser, filePath, sessionId)
     }
   } catch (err) { log.debug('Subagent dir scan failed:', err) }
 }
 
+function newSubagentState(filePath: string, session: WatchedSession, meta: SubagentMeta | null): SubagentState {
+  return {
+    watcher: null,
+    fileSize: 0,
+    agentName: meta?.name ?? generateSubagentFallbackName('', session.subagentWatchers.size + 1),
+    pendingToolCalls: new Map(),
+    seenToolUseIds: new Set(),
+    spawnEmitted: false,
+    toolUseId: meta?.toolUseId,
+    finished: false,
+  }
+}
+
+function watchFile(delegate: SubagentWatcherDelegate, parser: TranscriptParser, filePath: string, sessionId: string, state: SubagentState): void {
+  try {
+    state.watcher = fs.watch(filePath, () => {
+      readSubagentNewLines(delegate, parser, filePath, sessionId)
+    })
+  } catch (err) { log.debug('Subagent file watch failed:', err) }
+}
+
+/** A subagent created while we were watching: replay its file from the start,
+ *  so tool calls it made before we noticed the file are not lost. */
+function startLiveSubagentFile(
+  delegate: SubagentWatcherDelegate,
+  parser: TranscriptParser,
+  filePath: string,
+  sessionId: string,
+): void {
+  const session = delegate.getSession(sessionId)
+  if (!session) return
+  const state = newSubagentState(filePath, session, readSubagentMeta(filePath))
+  session.subagentWatchers.set(filePath, state)
+  log.info(`Tailing new subagent: ${path.basename(filePath)} as "${state.agentName}" (session ${sessionId.slice(0, SESSION_ID_DISPLAY)})`)
+  readSubagentNewLines(delegate, parser, filePath, sessionId)
+  watchFile(delegate, parser, filePath, sessionId, state)
+}
+
+/** A subagent file that already existed when we attached to the session */
 function startWatchingSubagentFile(
   delegate: SubagentWatcherDelegate,
   parser: TranscriptParser,
@@ -117,18 +172,9 @@ function startWatchingSubagentFile(
   if (!session) return
 
   const meta = readSubagentMeta(filePath)
-  const agentName = meta?.name ?? generateSubagentFallbackName('', session.subagentWatchers.size + 1)
-
-  const state: SubagentState = {
-    watcher: null,
-    fileSize: 0,
-    agentName,
-    pendingToolCalls: new Map(),
-    seenToolUseIds: new Set(),
-    spawnEmitted: false,
-    toolUseId: meta?.toolUseId,
-    finished: meta?.finished === true,
-  }
+  const state = newSubagentState(filePath, session, meta)
+  state.finished = meta?.finished === true
+  const agentName = state.agentName
   session.subagentWatchers.set(filePath, state)
 
   // Pre-scan existing content for dedup IDs and determine if the subagent
@@ -138,8 +184,10 @@ function startWatchingSubagentFile(
   try {
     const stat = fs.statSync(filePath)
     recentlyWritten = Date.now() - stat.mtimeMs < SUBAGENT_RECENT_WRITE_MS
-    if (stat.size > 0) {
-      const content = fs.readFileSync(filePath, 'utf-8')
+    // Only complete lines: a line still being written is read by the tail later
+    const size = completeLinesSize(filePath, stat.size)
+    if (size > 0) {
+      const content = readFileChunk(filePath, 0, size)
       for (const line of content.split(/\r?\n/)) {
         if (!line.trim()) continue
         try {
@@ -157,7 +205,7 @@ function startWatchingSubagentFile(
           }
         } catch { /* skip unparseable subagent transcript lines */ }
       }
-      state.fileSize = stat.size
+      state.fileSize = size
     }
   } catch (err) { log.debug('Subagent initial read failed:', err) }
 
@@ -177,11 +225,7 @@ function startWatchingSubagentFile(
     spawnOnce(delegate, session, state, sessionId)
   }
 
-  try {
-    state.watcher = fs.watch(filePath, () => {
-      readSubagentNewLines(delegate, parser, filePath, sessionId)
-    })
-  } catch (err) { log.debug('Subagent file watch failed:', err) }
+  watchFile(delegate, parser, filePath, sessionId, state)
 }
 
 function spawnOnce(

@@ -25,18 +25,24 @@ export const DEFAULT_CONTEXT_SIZE = 200_000
 /** Used when no model ID is available at all. */
 export const FALLBACK_CONTEXT_SIZE = 1_000_000
 
+// ─── Typography ──────────────────────────────────────────────────────────────
+
+/** UI font for canvas labels (matches --font-sans in styles.css) */
+export const FONT_SANS = '"Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif'
+/** Code font for tool arguments and other literal text (matches --font-mono) */
+export const FONT_MONO = '"JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, monospace'
+
 // ─── Visibility threshold ───────────────────────────────────────────────────
 
 /** Minimum opacity for an element to be considered visible (used for edge/draw culling) */
 export const MIN_VISIBLE_OPACITY = 0.05
 
+/** Opacity finished subagents settle at — dimmed, but still on the graph */
+export const COMPLETED_AGENT_OPACITY = 0.5
+
 // ─── Agent spawn distance ───────────────────────────────────────────────────
 
 export const AGENT_SPAWN_DISTANCE = 250
-
-// ─── Tool call dedup window (seconds) ──────────────────────────────────────
-
-export const TOOL_DEDUP_WINDOW_S = 3
 
 // ─── LocalStorage keys ─────────────────────────────────────────────────────
 
@@ -55,23 +61,24 @@ export const BUBBLE_FADE_IN = 0.3
 /** Seconds for bubble fade-out animation */
 export const BUBBLE_FADE_OUT = 1.5
 /** Maximum width (px) of a message bubble */
-export const BUBBLE_MAX_W = 220
+export const BUBBLE_MAX_W = 280
 /** Vertical gap (px) between stacked bubbles */
-export const BUBBLE_GAP = 6
+export const BUBBLE_GAP = 8
 /** Max visible lines in a bubble before truncation */
-export const BUBBLE_MAX_LINES = 8
+export const BUBBLE_MAX_LINES = 6
 
 /** Tool card width (px) for overlap detection */
-export const TOOL_CARD_W = 170
+export const TOOL_CARD_W = 220
 /** Tool card height (px) for overlap detection */
-export const TOOL_CARD_H = 36
+export const TOOL_CARD_H = 44
 
 // ─── Animation timing constants ─────────────────────────────────────────────
 
 /** Seconds a completed tool call stays visible before fading */
 export const TOOL_MIN_DISPLAY_S = 4.0
-/** Seconds before an orphan running tool fades out */
-export const TOOL_MAX_RUNNING_S = 10
+/** Seconds before a running tool with no result is treated as orphaned and
+ *  faded out. Long builds and test runs are normal, so this is generous. */
+export const TOOL_MAX_RUNNING_S = 300
 /** Seconds a discovery card stays visible before fading */
 export const DISCOVERY_HOLD_S = 8
 /** Speed multiplier for discovery lerp toward target position */
@@ -143,22 +150,22 @@ export const FORCE = {
 
 export const TOOL_SLOT = {
   maxRings: 5,
-  baseDistance: 100,
-  ringIncrement: 35,
+  baseDistance: 130,
+  ringIncrement: 46,
   baseSteps: 5,
   stepsPerRing: 2,
-  fallbackDistance: 90,
+  fallbackDistance: 120,
 } as const
 
 // ─── Discovery card dimension helpers ───────────────────────────────────────
 
-export const DISC_CHAR_W = 5.5
-export const DISC_LABEL_CHAR_W = 6
+export const DISC_CHAR_W = 6
+export const DISC_LABEL_CHAR_W = 6.5
 export const DISC_MIN_W = 80
-export const DISC_MAX_W = 150
+export const DISC_MAX_W = 200
 export const DISC_PADDING = 16
-export const DISC_HEADER_H = 16
-export const DISC_LINE_H = 11
+export const DISC_HEADER_H = 20
+export const DISC_LINE_H = 13
 
 /** Half-width used for discovery card bounding box in auto-fit calculations */
 export const DISC_BOUNDS_HALF_W = 80
@@ -174,7 +181,7 @@ export function getDiscoveryCardDimensions(label: string, contentLines: string[]
 
 // ─── Tool card dimension constant ───────────────────────────────────────────
 
-export const TOOL_MAX_CARD_W = 160
+export const TOOL_MAX_CARD_W = 240
 
 /** Blended $/M-token rate by model family (0.75 × input + 0.25 × output
  *  per-MTok pricing, the same weighting the original Sonnet-class rate used).
@@ -191,7 +198,7 @@ export const COST_RATE = 6
 
 export const AGENT_DRAW = {
   /** Offset from agent center to bubble anchor point */
-  bubbleAnchorOffset: 14,
+  bubbleAnchorOffset: 44,
   /** Initial cursor Y offset for bubbles */
   bubbleCursorY: -20,
   /** Outer glow extra radius beyond agent radius */
@@ -203,9 +210,9 @@ export const AGENT_DRAW = {
   shadowOffsetX: 3,
   shadowOffsetY: 5,
   /** Agent name label Y offset from agent radius */
-  labelYOffset: 8,
+  labelYOffset: 10,
   /** Agent name label width multiplier of radius */
-  labelWidthMultiplier: 3,
+  labelWidthMultiplier: 5,
   /** Scanline gradient half-height */
   scanlineHalfH: 4,
   /** Scanline width = 2 * scanlineHalfH */
@@ -227,7 +234,7 @@ export const AGENT_DRAW = {
   waitingBreatheSpeed: 1.2,
   waitingBreatheAmp: 0.08,
   /** Claude spark logo scale factor (relative to radius / SVG viewBox) */
-  sparkScale: 0.45,
+  sparkScale: 0.5,
   /** SVG viewBox size for Claude spark path */
   sparkViewBox: 256,
   /** Sub-agent icon font size relative to radius */
@@ -236,23 +243,23 @@ export const AGENT_DRAW = {
 
 export const CONTEXT_BAR = {
   /** Minimum bar width */
-  minWidth: 60,
+  minWidth: 64,
   /** Bar width multiplier of radius */
-  widthMultiplier: 2.2,
-  barHeight: 6,
+  widthMultiplier: 2.6,
+  barHeight: 4,
   /** Y offset from agent radius */
-  yOffset: 22,
-  borderRadius: 3,
+  yOffset: 32,
+  borderRadius: 2,
   /** Font for token count label */
-  fontSize: 7,
+  fontSize: 9.5,
   /** Y padding below bar for label */
-  labelPadding: 9,
+  labelPadding: 12,
 } as const
 
 export const CONTEXT_RING = {
   /** Ring offset from agent radius */
-  ringOffset: 8,
-  ringWidth: 4,
+  ringOffset: 7,
+  ringWidth: 3,
   /** Warning threshold ratios */
   warningThreshold: 0.8,
   criticalThreshold: 0.9,
@@ -263,27 +270,32 @@ export const CONTEXT_RING = {
   glowLineWidth: 2,
   glowBlur: 12,
   /** Percentage label Y offset from radius */
-  percentYOffset: 10,
+  percentYOffset: 14,
 } as const
 
 export const STATS_OVERLAY = {
   /** Y offset above agent radius */
-  yOffset: 25,
-  boxWidth: 70,
-  boxHeight: 18,
-  borderRadius: 3,
-  fontSize: 8,
-  textPaddingY: 4,
+  yOffset: 34,
+  boxWidth: 108,
+  boxHeight: 22,
+  borderRadius: 6,
+  fontSize: 10,
+  textPaddingY: 5,
 } as const
 
 // ─── Tool card drawing constants ────────────────────────────────────────────
 
 export const TOOL_DRAW = {
-  fontSize: 8,
-  borderRadius: 4,
+  fontSize: 10.5,
+  borderRadius: 8,
+  /** Horizontal padding inside the card */
+  padX: 10,
+  /** Space reserved left of the label for the status dot */
+  dotSpace: 12,
+  dotRadius: 3,
   /** Extra height for completed/error cards showing token cost */
-  expandedHeight: 30,
-  collapsedHeight: 24,
+  expandedHeight: 42,
+  collapsedHeight: 30,
   /** Error glow base blur + pulse amplitude */
   errorGlowBase: 8,
   errorGlowPulse: 4,
@@ -292,11 +304,11 @@ export const TOOL_DRAW = {
   spinSpeed: 3,
   spinArc: Math.PI * 1.2,
   /** Error detail font size */
-  errorFontSize: 6,
+  errorFontSize: 9,
   /** Token cost font size */
-  tokenFontSize: 6,
+  tokenFontSize: 9,
   /** Y offset for two-line card layout */
-  twoLineOffset: 5,
+  twoLineOffset: 7,
 } as const
 
 // ─── Cost overlay drawing constants ─────────────────────────────────────────
@@ -306,9 +318,9 @@ export const COST_DRAW = {
   minDisplayCost: 0.0001,
   /** Cost pill Y offset above agent radius */
   pillYOffset: 22,
-  pillPadding: 12,
-  pillHeight: 16,
-  pillRadius: 8,
+  pillPadding: 14,
+  pillHeight: 20,
+  pillRadius: 10,
   /** Mini bar height below cost pill */
   miniBarHeight: 3,
   miniBarRadius: 1.5,
@@ -318,13 +330,13 @@ export const COST_DRAW = {
 } as const
 
 export const COST_PANEL = {
-  width: 200,
+  width: 240,
   /** X margin from right edge */
   xMargin: 16,
   /** Y position (below top bar) */
-  yStart: 48,
-  lineHeight: 16,
-  headerHeight: 28,
+  yStart: 60,
+  lineHeight: 20,
+  headerHeight: 32,
   sectionGap: 8,
   maxRows: 5,
   borderRadius: 8,
@@ -336,13 +348,13 @@ export const COST_PANEL = {
 // ─── Bubble drawing constants ───────────────────────────────────────────────
 
 export const BUBBLE_DRAW = {
-  thinking: { fontSize: 5.5, labelSize: 5, lineH: 7.5, padding: 5, headerH: 10 },
-  normal: { fontSize: 7, labelSize: 6, lineH: 10, padding: 6, headerH: 12 },
+  thinking: { fontSize: 9.5, labelSize: 8, lineH: 14, padding: 10, headerH: 20 },
+  normal: { fontSize: 11, labelSize: 8.5, lineH: 16, padding: 11, headerH: 22 },
   /** Triangle pointer offsets */
-  triOffset: 4,
-  triWidth: 5,
+  triOffset: 5,
+  triWidth: 6,
   /** Border radius for bubble rounded rectangles */
-  borderRadius: 5,
+  borderRadius: 10,
 } as const
 
 // ─── Effect drawing constants ───────────────────────────────────────────────
@@ -378,8 +390,8 @@ export const PARTICLE_DRAW = {
   coreHighlightScale: 0.4,
   labelMinT: 0.2,
   labelMaxT: 0.8,
-  labelFontSize: 8,
-  labelYOffset: -12,
+  labelFontSize: 10,
+  labelYOffset: -14,
 } as const
 
 // ─── Performance overlay constants (debug only, ?perf or ?stress) ────────────
@@ -414,11 +426,11 @@ export const PERF_OVERLAY = {
 
 export const HIT_DETECTION = {
   /** Estimated character width for tool card labels */
-  toolCharWidth: 4.5,
+  toolCharWidth: 6.4,
   /** Estimated character width for bubble text */
-  bubbleCharWidth: 4.2,
+  bubbleCharWidth: 6,
   /** Tool card expanded height (with result) */
-  toolExpandedH: 34,
-  toolCollapsedH: 24,
+  toolExpandedH: 42,
+  toolCollapsedH: 30,
 } as const
 

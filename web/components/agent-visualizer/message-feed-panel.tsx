@@ -190,18 +190,18 @@ export function MessageFeedPanel({
     return (
       <div
         className="absolute cursor-pointer transition-all hover:scale-[1.02]"
-        style={{ top: 48, left: 12, zIndex: Z.info, pointerEvents: 'auto' }}
+        style={{ top: 60, left: 12, zIndex: Z.info, pointerEvents: 'auto' }}
         onClick={() => setExpanded(true)}
       >
         <div className="glass-card px-3 py-2 flex items-center gap-2" style={{ maxWidth: 320 }}>
           <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: role.text }} />
-          <span className="text-[9px] font-mono font-semibold shrink-0" style={{ color: COLORS.textPrimary }}>
+          <span className="text-[11px] font-semibold shrink-0" style={{ color: COLORS.textPrimary }}>
             {agentName.length > COLLAPSED_AGENT_NAME_MAX ? agentName.slice(0, COLLAPSED_AGENT_NAME_MAX) + '..' : agentName}
           </span>
-          <span className="text-[9px] font-mono truncate" style={{ color: role.text + 'cc' }}>
+          <span className="text-[11px] truncate" style={{ color: role.text + 'cc' }}>
             {preview}{latestMessage.content.length > PREVIEW_MAX ? '...' : ''}
           </span>
-          <span className="text-[9px] shrink-0" style={{ color: COLORS.textMuted }}>▾</span>
+          <span className="text-[11px] shrink-0" style={{ color: COLORS.textMuted }}>▾</span>
         </div>
       </div>
     )
@@ -212,18 +212,18 @@ export function MessageFeedPanel({
     <div
       ref={panelRef}
       className="absolute"
-      style={{ top: 48, left: 12, zIndex: Z.info, pointerEvents: 'auto' }}
+      style={{ top: 60, left: 12, zIndex: Z.info, pointerEvents: 'auto' }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="glass-card flex flex-col" style={{ width: 320, maxHeight: 420 }}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-2 pb-1">
-          <span className="text-[10px] font-mono font-semibold tracking-wider" style={{ color: COLORS.textPrimary }}>
+          <span className="text-[12px] font-semibold tracking-wider" style={{ color: COLORS.textPrimary }}>
             MESSAGES
           </span>
           <button
             onClick={() => setExpanded(false)}
-            className="text-[9px] transition-colors"
+            className="text-[11px] transition-colors"
             style={{ color: COLORS.textMuted }}
           >
             ▴
@@ -266,7 +266,7 @@ export function MessageFeedPanel({
         >
           {messages.length === 0 ? (
             <div className="flex items-center justify-center py-6">
-              <span className="text-[9px] font-mono" style={{ color: COLORS.textMuted }}>
+              <span className="text-[11px]" style={{ color: COLORS.textMuted }}>
                 No messages yet
               </span>
             </div>
@@ -310,7 +310,7 @@ function TabButton({ label, active, onClick, color, hasUnread }: {
   return (
     <button
       onClick={onClick}
-      className="px-2 py-0.5 rounded text-[9px] font-mono transition-all shrink-0 relative"
+      className="px-2 py-0.5 rounded text-[11px] transition-all shrink-0 relative"
       style={{
         background: active ? color + '20' : 'transparent',
         color: active ? color : COLORS.textMuted,
@@ -355,11 +355,11 @@ function MessageRow({ message, agentId, agentName, showAgent, isSelected, onClic
     >
       {/* Header row */}
       <div className="flex items-center gap-1.5 mb-0.5">
-        <span className="text-[9px] font-mono font-semibold" style={{ color: role.text + '90' }}>
+        <span className="text-[11px] font-semibold" style={{ color: role.text + '90' }}>
           {roleLabel}
         </span>
         {showAgent && (
-          <span className="text-[9px] font-mono" style={{ color: COLORS.textMuted }}>
+          <span className="text-[11px]" style={{ color: COLORS.textMuted }}>
             {agentName}
           </span>
         )}
@@ -367,7 +367,7 @@ function MessageRow({ message, agentId, agentName, showAgent, isSelected, onClic
 
       {/* Content */}
       <div
-        className="text-[9px] font-mono leading-relaxed whitespace-pre-wrap break-words"
+        className="text-[11px] leading-relaxed whitespace-pre-wrap break-words"
         style={{ color: role.text }}
       >
         {displayText}
@@ -376,7 +376,7 @@ function MessageRow({ message, agentId, agentName, showAgent, isSelected, onClic
       {/* Expand/collapse for long messages */}
       {isLong && (
         <button
-          className="text-[9px] font-mono mt-0.5 transition-colors"
+          className="text-[11px] mt-0.5 transition-colors"
           style={{ color: COLORS.textMuted }}
           onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev) }}
         >

@@ -1,9 +1,9 @@
 /**
- * Shared types for the VS Code bridge protocol.
+ * Shared types for the server → web protocol (SSE).
  *
- * These types mirror extension/src/protocol.ts and are kept separate
+ * These types mirror server/src/core/protocol.ts and are kept separate
  * to avoid cross-project imports. When updating these, also update
- * the canonical definitions in extension/src/protocol.ts.
+ * the canonical definitions in server/src/core/protocol.ts.
  */
 
 export interface AgentEvent {

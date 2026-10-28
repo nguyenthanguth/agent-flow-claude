@@ -1,6 +1,6 @@
 import { Agent, Discovery } from '@/lib/agent-types'
 import { COLORS, getDiscoveryTypeColor } from '@/lib/colors'
-import { getDiscoveryCardDimensions } from '@/lib/canvas-constants'
+import { getDiscoveryCardDimensions, FONT_SANS, FONT_MONO } from '@/lib/canvas-constants'
 import { truncateText } from './draw-misc'
 
 export function drawDiscoveryConnections(ctx: CanvasRenderingContext2D, discoveries: Discovery[], agents: Map<string, Agent>) {
@@ -37,7 +37,7 @@ export function drawDiscoveries(ctx: CanvasRenderingContext2D, discoveries: Disc
     const isSelected = disc.id === selectedDiscoveryId
 
     ctx.beginPath()
-    ctx.roundRect(cardX, cardY, cardW, cardH, 3)
+    ctx.roundRect(cardX, cardY, cardW, cardH, 8)
     ctx.fillStyle = isSelected ? COLORS.cardBgSelected : COLORS.cardBg
     ctx.fill()
 
@@ -54,7 +54,7 @@ export function drawDiscoveries(ctx: CanvasRenderingContext2D, discoveries: Disc
     }
 
     ctx.fillStyle = typeColor + '60'
-    ctx.fillRect(cardX, cardY, 2, cardH)
+    ctx.fillRect(cardX + 1, cardY + 6, 2, cardH - 12)
 
     if (!isSelected) {
       ctx.strokeStyle = typeColor + '30'
@@ -63,15 +63,15 @@ export function drawDiscoveries(ctx: CanvasRenderingContext2D, discoveries: Disc
     }
 
     ctx.fillStyle = typeColor
-    ctx.font = 'bold 8px monospace'
+    ctx.font = `600 10px ${FONT_SANS}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
-    ctx.fillText(truncateText(ctx, disc.label, cardW - 10), cardX + 6, cardY + 3)
+    ctx.fillText(truncateText(ctx, disc.label, cardW - 16), cardX + 10, cardY + 5)
 
     ctx.fillStyle = COLORS.textMuted
-    ctx.font = '7px monospace'
+    ctx.font = `9px ${FONT_MONO}`
     for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(truncateText(ctx, lines[i], cardW - 10), cardX + 6, cardY + 14 + i * 11)
+      ctx.fillText(truncateText(ctx, lines[i], cardW - 16), cardX + 10, cardY + 19 + i * 13)
     }
 
     ctx.restore()

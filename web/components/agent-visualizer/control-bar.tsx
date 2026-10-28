@@ -119,13 +119,13 @@ function LiveControlBar({
               opacity: pulseOn ? 1 : 0.6,
             }}
           />
-          <span className="text-[10px] font-mono font-semibold tracking-wider" style={{ color: COLORS.liveText }}>
+          <span className="text-[12px] font-semibold tracking-wider" style={{ color: COLORS.liveText }}>
             LIVE
           </span>
         </div>
 
         {/* Time */}
-        <span className="text-xs font-mono shrink-0" style={{ color: COLORS.textPrimary }}>
+        <span className="text-xs shrink-0" style={{ color: COLORS.textPrimary }}>
           {formatTime(currentTime)}
         </span>
 
@@ -140,14 +140,14 @@ function LiveControlBar({
         </div>
 
         {/* Event count */}
-        <span className="text-[10px] font-mono shrink-0" style={{ color: COLORS.textMuted }}>
+        <span className="text-[12px] shrink-0" style={{ color: COLORS.textMuted }}>
           {eventCount}
         </span>
 
         {/* Review button */}
         <button
           onClick={onEnterReview}
-          className="px-2.5 py-1 rounded text-[10px] font-mono transition-all hover:scale-105"
+          className="px-2.5 py-1 rounded text-[12px] transition-all hover:scale-105"
           style={{
             background: COLORS.holoBg10,
             border: `1px solid ${COLORS.reviewBtnBorder}`,
@@ -216,7 +216,7 @@ function ReviewControlBar({
         </button>
 
         {/* Time */}
-        <span className="text-xs font-mono shrink-0" style={{ color: COLORS.textPrimary, minWidth: 42 }}>
+        <span className="text-xs shrink-0" style={{ color: COLORS.textPrimary, minWidth: 42 }}>
           {formatTime(currentTime)}
         </span>
 
@@ -265,7 +265,7 @@ function ReviewControlBar({
         </div>
 
         {/* Duration */}
-        <span className="text-[10px] font-mono shrink-0" style={{ color: COLORS.textMuted }}>
+        <span className="text-[12px] shrink-0" style={{ color: COLORS.textMuted }}>
           {formatTime(totalDuration)}
         </span>
 
@@ -275,7 +275,7 @@ function ReviewControlBar({
             <button
               key={s}
               onClick={() => onSpeedChange(s)}
-              className="px-2 py-0.5 rounded text-[10px] font-mono transition-all"
+              className="px-2 py-0.5 rounded text-[12px] transition-all"
               style={{
                 background: speed === s ? COLORS.playBtnActiveBg : 'transparent',
                 color: speed === s ? COLORS.textPrimary : COLORS.textMuted,
@@ -290,7 +290,7 @@ function ReviewControlBar({
         {isReviewing && (
           <button
             onClick={onResumeLive}
-            className="px-2.5 py-1 rounded text-[10px] font-mono font-semibold transition-all hover:scale-105 shrink-0"
+            className="px-2.5 py-1 rounded text-[12px] font-semibold transition-all hover:scale-105 shrink-0"
             style={{
               background: COLORS.liveResumeBg,
               border: `1px solid ${COLORS.liveResumeBorder}`,

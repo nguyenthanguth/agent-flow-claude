@@ -1,5 +1,4 @@
 import { COLORS } from '@/lib/colors'
-import { TOOL_DEDUP_WINDOW_S } from '@/lib/canvas-constants'
 import { pushTimelineBlock, type ProcessEventContext, type MutableEventState } from './process-event'
 import { appendConversation, asString, asBoolean, LABEL_LEN_PARTICLE, LABEL_LEN_TIMELINE } from './types'
 
@@ -22,17 +21,8 @@ export function handleToolCallStart(
   const agent = state.agents.get(agentName)
 
   if (agent) {
-    // Dedup: skip if there's already a running tool call for the same agent+tool
-    // created within the last 3 seconds (race between Hook Server and Session Watcher)
-    let isDuplicate = false
-    for (const tc of state.toolCalls.values()) {
-      if (tc.agentId === agentName && tc.toolName === toolName && tc.state === 'running' && (currentTime - tc.startTime) < TOOL_DEDUP_WINDOW_S) {
-        isDuplicate = true
-        break
-      }
-    }
-    if (isDuplicate) return
-
+    // No dedup here: the server emits each tool_use once (by id), and parallel
+    // calls to the same tool are real, separate calls.
     state.agents.set(agentName, {
       ...agent,
       state: 'tool_calling',

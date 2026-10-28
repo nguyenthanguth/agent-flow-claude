@@ -1,10 +1,9 @@
 /**
- * Unit tests for readNewFileLines.
+ * Unit tests for readNewFileLines and completeLinesSize.
  *
- * The critical invariant: if a writer flushes a line in two chunks, the reader
- * reassembles it via the `tail` field instead of dropping the split line. A
- * watcher that doesn't forward `tail` back on the next call silently loses
- * the line — which is the bug we'd silently regress if this test goes away.
+ * The critical invariant: a line the writer has only partly flushed is never
+ * lost. readNewFileLines stops at the last newline, so the unfinished line is
+ * read again — whole — on a later call.
  */
 
 import { describe, it, before, after } from 'node:test'
@@ -12,7 +11,7 @@ import assert from 'node:assert/strict'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { readNewFileLines } from '../src/core/fs-utils'
+import { readNewFileLines, completeLinesSize } from '../src/core/fs-utils'
 
 describe('readNewFileLines', () => {
   let dir: string
@@ -31,64 +30,53 @@ describe('readNewFileLines', () => {
     assert.equal(readNewFileLines(file, size), null)
   })
 
-  it('splits complete lines and leaves tail empty', () => {
+  it('splits complete lines and advances to the end', () => {
     fs.writeFileSync(file, 'a\nb\nc\n')
     const r = readNewFileLines(file, 0)
     assert.ok(r)
     assert.deepEqual(r!.lines, ['a', 'b', 'c'])
-    assert.equal(r!.tail, '')
     assert.equal(r!.newSize, fs.statSync(file).size)
   })
 
-  it('returns the trailing partial line as tail', () => {
+  it('stops before a trailing partial line', () => {
     fs.writeFileSync(file, 'first\nsecond-incompl')
     const r = readNewFileLines(file, 0)
     assert.ok(r)
     assert.deepEqual(r!.lines, ['first'])
-    assert.equal(r!.tail, 'second-incompl')
+    assert.equal(r!.newSize, Buffer.byteLength('first\n'))
   })
 
-  it('reassembles a line split across two reads via tail', () => {
+  it('returns a line split across two writes once it is complete', () => {
     // Simulate a JSONL writer that flushes mid-line.
     fs.writeFileSync(file, '{"type":"session_meta","pay')
-    const first = readNewFileLines(file, 0)
-    assert.ok(first)
-    assert.deepEqual(first!.lines, [])
-    assert.equal(first!.tail, '{"type":"session_meta","pay')
+    assert.equal(readNewFileLines(file, 0), null)
 
     // Writer appends the rest of the line plus a new one.
     fs.appendFileSync(file, 'load":{}}\n{"type":"other"}\n')
-    const second = readNewFileLines(file, first!.newSize, first!.tail)
-    assert.ok(second)
-    assert.deepEqual(second!.lines, [
+    const r = readNewFileLines(file, 0)
+    assert.ok(r)
+    assert.deepEqual(r!.lines, [
       '{"type":"session_meta","payload":{}}',
       '{"type":"other"}',
     ])
-    assert.equal(second!.tail, '')
   })
 
-  it('drops the split line when caller ignores tail (regression guard)', () => {
-    // If a caller passes no lastTail and silently discards tail, a split line
-    // is lost. This test locks in the "contract" so the mistake is visible.
-    fs.writeFileSync(file, 'aaa\nbbb-cut')
-    const first = readNewFileLines(file, 0)
-    assert.ok(first)
-    assert.equal(first!.tail, 'bbb-cut')
-
-    fs.appendFileSync(file, 'here\nccc\n')
-    // Caller forgets to forward tail — "bbb-cuthere" never appears.
-    const second = readNewFileLines(file, first!.newSize /* no tail */)
-    assert.ok(second)
-    assert.ok(!second!.lines.includes('bbb-cuthere'))
+  it('never splits a multi-byte UTF-8 character', () => {
+    const line = '{"text":"xin chào — 日本"}'
+    const bytes = Buffer.from(line + '\n')
+    // Cut inside the last multi-byte character
+    fs.writeFileSync(file, bytes.subarray(0, bytes.length - 4))
+    assert.equal(readNewFileLines(file, 0), null)
+    fs.appendFileSync(file, bytes.subarray(bytes.length - 4))
+    assert.deepEqual(readNewFileLines(file, 0)!.lines, [line])
   })
 
   it('resets to 0 when the file is truncated', () => {
     fs.writeFileSync(file, 'only\n')
-    const r = readNewFileLines(file, 9999, 'stale-tail')
+    const r = readNewFileLines(file, 9999)
     assert.ok(r)
     assert.deepEqual(r!.lines, [])
     assert.equal(r!.newSize, 0)
-    assert.equal(r!.tail, '')
   })
 
   it('tolerates CRLF line endings', () => {
@@ -100,5 +88,16 @@ describe('readNewFileLines', () => {
 
   it('returns null when the file does not exist', () => {
     assert.equal(readNewFileLines(path.join(dir, 'missing.jsonl'), 0), null)
+  })
+})
+
+describe('completeLinesSize', () => {
+  it('counts bytes through the last newline only', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-flow-fs-utils-'))
+    const file = path.join(dir, 'f.jsonl')
+    fs.writeFileSync(file, 'one\ntwo\nthr')
+    assert.equal(completeLinesSize(file, fs.statSync(file).size), Buffer.byteLength('one\ntwo\n'))
+    assert.equal(completeLinesSize(file, 2), 0)
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 })

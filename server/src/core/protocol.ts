@@ -167,6 +167,8 @@ export interface WatchedSession {
   inlineProgressAgents: Set<string>
   subagentsDirWatcher: import('fs').FSWatcher | null
   subagentsDir: string | null
+  /** Set after the first subagents-dir scan; files found later were created live */
+  subagentsScanned: boolean
   label: string
   labelSet: boolean
   model: string | null

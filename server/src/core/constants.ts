@@ -29,7 +29,7 @@ export const POLL_FALLBACK_MS = 1000
 export const ACTIVE_SESSION_AGE_S = 10 * 60 // 10 minutes
 
 /** Default server port (SSE + UI) */
-export const DEFAULT_PORT = 3001
+export const DEFAULT_PORT = 3030
 
 // ─── Text Truncation Limits ──────────────────────────────────────────────────
 

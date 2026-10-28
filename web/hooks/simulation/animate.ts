@@ -3,7 +3,7 @@ import {
   TOOL_MIN_DISPLAY_S, TOOL_MAX_RUNNING_S,
   DISCOVERY_HOLD_S, DISCOVERY_LERP_SPEED,
   BUBBLE_VISIBLE_S, MOCK_END_BUFFER_S,
-  ANIM_SPEED,
+  ANIM_SPEED, COMPLETED_AGENT_OPACITY,
 } from '@/lib/canvas-constants'
 
 export interface AnimateOptions {
@@ -23,9 +23,11 @@ function animateAgents(agents: SimulationState['agents'], deltaTime: number, cur
 
     if (agent.state !== 'complete' && opacity < 1) { opacity = Math.min(1, opacity + deltaTime * ANIM_SPEED.agentFadeIn); updated = true }
     if (agent.state !== 'complete' && scale < 1) { scale = Math.min(1, scale + deltaTime * ANIM_SPEED.agentScaleIn); updated = true }
+    // Finished subagents dim but stay on the graph, so the session's history
+    // remains readable instead of nodes vanishing a few seconds after they end.
     if (agent.state === 'complete' && !agent.isMain) {
-      if (opacity > 0) { opacity = Math.max(0, opacity - deltaTime * ANIM_SPEED.agentFadeOut); updated = true }
-      if (scale > 0.8) { scale = Math.max(0.8, scale - deltaTime * ANIM_SPEED.agentScaleOut); updated = true }
+      if (opacity > COMPLETED_AGENT_OPACITY) { opacity = Math.max(COMPLETED_AGENT_OPACITY, opacity - deltaTime * ANIM_SPEED.agentFadeOut); updated = true }
+      if (scale > 0.85) { scale = Math.max(0.85, scale - deltaTime * ANIM_SPEED.agentScaleOut); updated = true }
     }
     if (agent.state !== 'complete') { timeAlive += deltaTime; updated = true }
     // Prune expired message bubbles
@@ -84,23 +86,10 @@ function cleanupFaded(
   originalAgents: SimulationState['agents'],
   originalToolCalls: SimulationState['toolCalls'],
 ): { agents: SimulationState['agents']; toolCalls: SimulationState['toolCalls']; edges: SimulationState['edges'] } {
-  let newAgents = agents
+  // Finished agents are no longer removed (they stay dimmed), so only tool calls fade out here
+  const newAgents = agents
   let newToolCalls = toolCalls
   let filteredEdges = edges
-
-  // Cleanup faded agents (completed sub-agents) and their edges
-  const fadedAgentIds: string[] = []
-  for (const [id, agent] of newAgents) {
-    if (!agent.isMain && agent.state === 'complete' && agent.opacity <= 0) {
-      fadedAgentIds.push(id)
-    }
-  }
-  if (fadedAgentIds.length > 0) {
-    if (newAgents === originalAgents) newAgents = new Map(originalAgents)
-    const fadedSet = new Set(fadedAgentIds)
-    for (const id of fadedAgentIds) newAgents.delete(id)
-    filteredEdges = filteredEdges.filter(e => !fadedSet.has(e.from) && !fadedSet.has(e.to))
-  }
 
   // Cleanup faded tool calls (opacity <= 0) and their edges
   const fadedToolIds: string[] = []

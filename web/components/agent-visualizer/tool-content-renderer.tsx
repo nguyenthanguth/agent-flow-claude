@@ -51,7 +51,7 @@ function FilePath({ path: filePath }: { path: string }) {
   const short = truncatePath(filePath)
   return (
     <div
-      className={`text-[9px] mb-1 truncate ${openFile ? 'hover:underline' : ''}`}
+      className={`text-[11px] mb-1 truncate ${openFile ? 'hover:underline' : ''}`}
       style={{ color: openFile ? COLORS.filePathActive : COLORS.filePathInactive, cursor: openFile ? 'pointer' : undefined }}
       onClick={openFile ? () => openFile(filePath) : undefined}
       title={openFile ? filePath : undefined}
@@ -73,7 +73,7 @@ function EditContent({ data, compact }: { data: Record<string, unknown>; compact
   return (
     <div>
       <FilePath path={filePath} />
-      <div className="rounded overflow-hidden text-[9px] font-mono leading-snug" style={{ background: COLORS.codeBlockBg }}>
+      <div className="rounded overflow-hidden text-[11px] font-mono leading-snug" style={{ background: COLORS.codeBlockBg }}>
         {oldLines.map((line, i) => (
           <div key={`old-${i}`} className="px-1.5 py-px" style={{ color: COLORS.diffRemoved, background: COLORS.diffRemovedBg }}>
             <span className="opacity-50 mr-1">-</span>{line || ' '}
@@ -118,7 +118,7 @@ function TodoContent({ data }: { data: Record<string, unknown> }) {
           todo.status === 'in_progress' ? COLORS.tool_calling : COLORS.todoPending
 
         return (
-          <div key={i} className="flex items-start gap-1.5 text-[10px] font-mono">
+          <div key={i} className="flex items-start gap-1.5 text-[12px] font-mono">
             <span style={{ color, flexShrink: 0 }}>{icon}</span>
             <span style={{
               color: todo.status === 'completed' ? COLORS.todoCompletedText : COLORS.assistantText,
@@ -142,9 +142,9 @@ function BashContent({ data, compact }: { data: Record<string, unknown>; compact
   return (
     <div>
       {description && (
-        <div className="text-[9px] mb-1 opacity-60" style={{ color: COLORS.assistantText }}>{description}</div>
+        <div className="text-[11px] mb-1 opacity-60" style={{ color: COLORS.assistantText }}>{description}</div>
       )}
-      <div className="rounded px-1.5 py-1 text-[9px] font-mono" style={{ background: COLORS.codeBlockBg, color: COLORS.tool_calling }}>
+      <div className="rounded px-1.5 py-1 text-[11px] font-mono" style={{ background: COLORS.codeBlockBg, color: COLORS.tool_calling }}>
         <span className="opacity-55 mr-1">$</span>
         {command.length > maxLen ? command.slice(0, maxLen) + '...' : command}
       </div>
@@ -161,7 +161,7 @@ function WriteContent({ data, compact }: { data: Record<string, unknown>; compac
   return (
     <div>
       <FilePath path={filePath} />
-      <div className="rounded px-1.5 py-1 text-[9px] font-mono leading-snug" style={{ background: COLORS.codeBlockBg, color: COLORS.contentDim }}>
+      <div className="rounded px-1.5 py-1 text-[11px] font-mono leading-snug" style={{ background: COLORS.codeBlockBg, color: COLORS.contentDim }}>
         {lines.map((line, i) => (
           <div key={i} className="truncate">{line || ' '}</div>
         ))}
@@ -182,7 +182,7 @@ function ReadContent({ data }: { data: Record<string, unknown> }) {
     <div>
       <FilePath path={filePath} />
       {(offset != null || limit != null) && (
-        <div className="text-[9px] opacity-50" style={{ color: COLORS.assistantText }}>
+        <div className="text-[11px] opacity-50" style={{ color: COLORS.assistantText }}>
           {offset ? `from line ${offset}` : ''}{offset && limit ? ', ' : ''}{limit ? `${limit} lines` : ''}
         </div>
       )}
@@ -196,7 +196,7 @@ function GrepContent({ data }: { data: Record<string, unknown> }) {
   const glob = typeof data.glob === 'string' ? data.glob : undefined
 
   return (
-    <div className="text-[9px] font-mono">
+    <div className="text-[11px] font-mono">
       <span style={{ color: COLORS.tool_calling }}>{pattern}</span>
       {searchPath && <span className="opacity-55 ml-1">in {truncatePath(searchPath, 2)}</span>}
       {glob && <span className="opacity-55 ml-1">({glob})</span>}
@@ -209,7 +209,7 @@ function GlobContent({ data }: { data: Record<string, unknown> }) {
   const searchPath = String(data.path || '')
 
   return (
-    <div className="text-[9px] font-mono">
+    <div className="text-[11px] font-mono">
       <span style={{ color: COLORS.tool_calling }}>{pattern}</span>
       {searchPath && <span className="opacity-55 ml-1">in {truncatePath(searchPath, 2)}</span>}
     </div>
@@ -220,7 +220,7 @@ function WebSearchContent({ data }: { data: Record<string, unknown> }) {
   const query = String(data.query || '')
 
   return (
-    <div className="rounded px-1.5 py-1 text-[10px] font-mono flex items-center gap-1.5" style={{ background: COLORS.codeBlockBg }}>
+    <div className="rounded px-1.5 py-1 text-[12px] font-mono flex items-center gap-1.5" style={{ background: COLORS.codeBlockBg }}>
       <span style={{ color: COLORS.searchIcon }}>🔍</span>
       <span style={{ color: COLORS.assistantText }}>{query}</span>
     </div>
@@ -235,11 +235,11 @@ function WebFetchContent({ data }: { data: Record<string, unknown> }) {
 
   return (
     <div>
-      <div className="rounded px-1.5 py-1 text-[9px] font-mono truncate" style={{ background: COLORS.codeBlockBg, color: COLORS.filePathActive }}>
+      <div className="rounded px-1.5 py-1 text-[11px] font-mono truncate" style={{ background: COLORS.codeBlockBg, color: COLORS.filePathActive }}>
         🌐 {displayUrl}
       </div>
       {prompt && (
-        <div className="mt-1 text-[9px] opacity-50 truncate" style={{ color: COLORS.assistantText }}>
+        <div className="mt-1 text-[11px] opacity-50 truncate" style={{ color: COLORS.assistantText }}>
           {prompt.slice(0, 120)}
         </div>
       )}
@@ -255,7 +255,7 @@ function AskUserContent({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-1.5">
       {questions.map((q, i) => (
         <div key={i}>
-          <div className="text-[10px] font-mono mb-0.5" style={{ color: COLORS.tool_calling }}>
+          <div className="text-[12px] font-mono mb-0.5" style={{ color: COLORS.tool_calling }}>
             {q.question}
           </div>
           {Array.isArray(q.options) && q.options.length > 0 && (
@@ -263,7 +263,7 @@ function AskUserContent({ data }: { data: Record<string, unknown> }) {
               {q.options.map((opt, j) => (
                 <span
                   key={j}
-                  className="text-[9px] font-mono px-1.5 py-0.5 rounded"
+                  className="text-[11px] font-mono px-1.5 py-0.5 rounded"
                   style={{ background: COLORS.glassHighlight, border: `1px solid ${COLORS.glassBorder}`, color: COLORS.contentDim }}
                 >
                   {opt}

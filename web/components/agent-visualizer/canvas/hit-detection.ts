@@ -39,8 +39,10 @@ export function findToolCallAt(
     // Match the card dimensions from drawToolCalls
     const isRunning = tool.state === 'running'
     const isError = tool.state === 'error'
-    const labelLen = (`${tool.toolName}: ${tool.args}`).length * HIT_DETECTION.toolCharWidth + 12
-    const cardW = Math.max(60, Math.min(labelLen, TOOL_MAX_CARD_W))
+    // Estimate of toolCardWidth() in draw-tool-calls.ts (no canvas context here)
+    const labelLen = (`${tool.toolName} ${tool.args}`).length * HIT_DETECTION.toolCharWidth
+      + TOOL_DRAW.padX * 2 + TOOL_DRAW.dotSpace
+    const cardW = Math.max(72, Math.min(labelLen, TOOL_MAX_CARD_W))
     const cardH = (!isRunning && (tool.tokenCost || isError)) ? TOOL_DRAW.expandedHeight : TOOL_DRAW.collapsedHeight
     const cardX = tool.x - cardW / 2
     const cardY = tool.y - cardH / 2

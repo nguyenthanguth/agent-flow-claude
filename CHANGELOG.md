@@ -2,6 +2,26 @@
 
 ## Unreleased (fork)
 
+- **Renamed to agent-flow-claude** (based on Agent Flow). The CLI is `agent-flow-claude` (`server/dist/agent-flow-claude.js`) and the workspace variable is `AGENT_FLOW_CLAUDE_WORKSPACE`. CI uploads a ready-to-run build as an artifact
+- Fix: a JSONL line read while Claude Code was still writing it was lost for good (for example a large tool result, which left its card "running"). Reads now stop at the last complete line and pick the rest up on the next read
+- Fix: on long sessions the replay buffer trimmed the first `agent_spawn` events, so after a reload the main agent and early subagents were missing. Trimming now keeps spawn, dispatch, return, complete and model events
+- Fix: clicking the session tab that was already selected froze live updates until another tab was chosen
+- Fix: after the idle timeout the main agent kept looking busy; it now shows as idle until the session resumes
+- Fix: parallel calls to the same tool (for example three `Read`s at once) were merged into one card
+- Subagents created while Agent Flow is watching are replayed from their first line, so nothing they did before being noticed is dropped
+- **One local server + browser UI, Claude Code only.** Removed the VS Code extension, Next.js, telemetry, and the Claude Code hook integration (no more `hook.js`, discovery files or edits to `~/.claude/settings.json`). The server only reads session transcripts. Run `pnpm build`, then `node server/dist/agent-flow.js [-w <project>]`; default port is now 3030
+- **Subagents in real time**
+  - Fix: subagents showed up twice — once from transcripts, once from hooks under a different name (`Explore-7ea23e`) that was never spawned, so its tool calls went nowhere
+  - Fix: running subagents were marked done and faded away whenever the main agent finished a turn (the `Stop` hook completed the orchestrator, which cascaded to every child)
+  - Fix: background subagents never completed on Claude Code 2.1+, which delivers `<task-notification>` as an `attachment` entry. Both shapes are parsed, and the subagent's `.meta.json` `finished: true` now completes it too, with its final answer as the summary
+  - Fix: subagents already running when Agent Flow starts are now shown
+  - Fix: a new subagent waits for its `.meta.json` instead of appearing as `subagent-N`
+  - Finished subagents stay on the graph, dimmed, instead of being removed; long-running tool calls (builds, tests) no longer fade out after 10 seconds
+  - The idle timeout marks the main agent idle instead of completing the whole graph
+  - Transcripts are polled every second as a fallback to file watching (was 3 s)
+- Fix: reloading the page or an SSE reconnect could drop or duplicate events. Every connection now starts with a reset and replays all sessions, not just the most recent one
+- Removed the "waiting for permission" heuristic, which fired for any tool running longer than 5 seconds
+- **New look**: warm dark theme with Claude's clay accent, circular agent nodes, readable sans-serif text (monospace only for commands and code), solid cards for tool calls and messages, a quiet dot grid instead of the starfield, hex grid and bloom
 - **Removed Codex support** — this fork visualizes Claude Code sessions only
   - Removed the Codex rollout watcher and parser, the OpenAI logo and "CODEX" labels in the web view, and GPT model context/cost/name handling
   - Removed the `agentVisualizer.runtime` setting and the `AGENT_FLOW_RUNTIME` environment variable; the Claude runtime always runs

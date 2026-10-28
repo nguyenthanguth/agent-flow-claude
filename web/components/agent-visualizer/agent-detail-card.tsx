@@ -48,11 +48,11 @@ export function AgentDetailCard({
           style={{ background: stateColor, boxShadow: `0 0 8px ${stateColor}` }}
         />
         <div className="flex flex-col">
-          <span className="text-xs font-mono" style={{ color: COLORS.textPrimary }}>
+          <span className="text-xs" style={{ color: COLORS.textPrimary }}>
             {agent.name}
           </span>
           {agent.model && (
-            <span className="text-[9px] font-mono" style={{ color: COLORS.textDim }}>
+            <span className="text-[11px]" style={{ color: COLORS.textDim }}>
               {formatModelName(agent.model)}
             </span>
           )}
@@ -62,8 +62,8 @@ export function AgentDetailCard({
       {/* Context bar */}
       <div className="mb-3">
         <div className="flex justify-between mb-1">
-          <span className="text-[10px]" style={{ color: COLORS.textMuted }}>Context</span>
-          <span className="text-[10px] font-mono" style={{ color: COLORS.textDim }}>
+          <span className="text-[12px]" style={{ color: COLORS.textMuted }}>Context</span>
+          <span className="text-[12px]" style={{ color: COLORS.textDim }}>
             {formatTokens(agent.tokensUsed)} / {formatTokens(agent.tokensMax)} ({contextPercent}%)
           </span>
         </div>
@@ -71,7 +71,7 @@ export function AgentDetailCard({
       </div>
 
       {/* Stats row */}
-      <div className="flex gap-3 mb-3 text-[10px] font-mono" style={{ color: COLORS.textDim }}>
+      <div className="flex gap-3 mb-3 text-[12px]" style={{ color: COLORS.textDim }}>
         <span>{agent.toolCalls} tools</span>
         <span>{agent.timeAlive.toFixed(1)}s alive</span>
         <span className="capitalize" style={{ color: stateColor }}>{agent.state}</span>
@@ -80,7 +80,7 @@ export function AgentDetailCard({
       {/* Current tool */}
       {agent.currentTool && (
         <div
-          className="mb-3 px-2 py-1.5 rounded text-[10px] font-mono flex items-center gap-2"
+          className="mb-3 px-2 py-1.5 rounded text-[12px] flex items-center gap-2"
           style={{
             background: COLORS.toolIndicatorBg,
             border: `1px solid ${COLORS.toolIndicatorBorder}`,

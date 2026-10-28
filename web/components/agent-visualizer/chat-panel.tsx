@@ -38,10 +38,10 @@ export function AgentChatPanel({
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: stateColor, boxShadow: `0 0 6px ${stateColor}` }}
           />
-          <span className="text-[10px] font-mono tracking-wider" style={{ color: COLORS.textPrimary }}>
+          <span className="text-[12px] tracking-wider" style={{ color: COLORS.textPrimary }}>
             {agentName.toUpperCase()}
           </span>
-          <span className="text-[9px] font-mono capitalize" style={{ color: stateColor + '90' }}>
+          <span className="text-[11px] capitalize" style={{ color: stateColor + '90' }}>
             {agentState}
           </span>
         </PanelHeader>
@@ -54,7 +54,7 @@ export function AgentChatPanel({
         >
           {conversation.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-[10px] font-mono" style={{ color: COLORS.textMuted }}>
+              <p className="text-[12px]" style={{ color: COLORS.textMuted }}>
                 No messages yet...
               </p>
             </div>

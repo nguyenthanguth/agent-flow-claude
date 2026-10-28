@@ -58,7 +58,7 @@ export function SessionTranscriptPanel({
   return (
     <SlidingPanel
       visible={visible}
-      position={{ right: 0, bottom: 0, top: 36 }}
+      position={{ right: 12, bottom: 12, top: 60 }}
       zIndex={Z.transcriptPanel}
       width={CARD.transcript.width}
       {...stopPropagationHandlers}
@@ -77,17 +77,17 @@ export function SessionTranscriptPanel({
           style={{ borderBottom: `1px solid ${COLORS.holoBorder08}` }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono tracking-widest font-semibold" style={{ color: COLORS.panelLabel }}>
+            <span className="text-[12px] tracking-widest font-semibold" style={{ color: COLORS.panelLabel }}>
               TRANSCRIPT
             </span>
-            <span className="text-[9px] font-mono" style={{ color: COLORS.panelLabelDim }}>
+            <span className="text-[11px]" style={{ color: COLORS.panelLabelDim }}>
               {searchQuery ? `${filteredConversation.length}/${conversation.length}` : conversation.length} messages
             </span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => { setShowSearch(s => !s); if (showSearch) setSearchQuery('') }}
-              className="text-[9px] font-mono px-1.5 py-0.5 rounded transition-all"
+              className="text-[11px] px-1.5 py-0.5 rounded transition-all"
               style={{
                 background: showSearch ? COLORS.toggleActive : 'transparent',
                 color: showSearch ? COLORS.assistantText : COLORS.textMuted,
@@ -112,7 +112,7 @@ export function SessionTranscriptPanel({
                 e.stopPropagation()
               }}
               placeholder="Filter messages..."
-              className="w-full px-2 py-1 rounded text-[10px] font-mono outline-none"
+              className="w-full px-2 py-1 rounded text-[12px] outline-none"
               style={{
                 background: COLORS.holoBg05,
                 border: `1px solid ${COLORS.holoBorder12}`,
@@ -131,7 +131,7 @@ export function SessionTranscriptPanel({
         >
           {filteredConversation.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <p className="text-[10px] font-mono" style={{ color: COLORS.textMuted }}>
+              <p className="text-[12px]" style={{ color: COLORS.textMuted }}>
                 {searchQuery ? 'No matching messages' : 'Waiting for session activity...'}
               </p>
             </div>
@@ -157,7 +157,7 @@ export function SessionTranscriptPanel({
           <div className="flex justify-center py-1 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.holoBorder06}` }}>
             <button
               onClick={scrollToBottom}
-              className="text-[9px] font-mono px-3 py-1 rounded-full transition-all"
+              className="text-[11px] px-3 py-1 rounded-full transition-all"
               style={{
                 background: COLORS.holoBg10,
                 border: `1px solid ${COLORS.glassBorder}`,

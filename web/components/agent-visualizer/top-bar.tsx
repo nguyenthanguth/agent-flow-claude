@@ -6,11 +6,11 @@ import { agentCost } from "./canvas/draw-cost"
 import { SessionTabs } from "./session-tabs"
 import type { SessionInfo, ConnectionStatus } from "@/lib/bridge-types"
 
-// ─── Mute/Unmute SVG Icons ───────────────────────────────────────────────────
+// ─── Icons ──────────────────────────────────────────────────────────────────
 
 function MutedIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <line x1="23" y1="9" x2="17" y2="15" />
       <line x1="17" y1="9" x2="23" y2="15" />
@@ -20,7 +20,7 @@ function MutedIcon() {
 
 function UnmutedIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -28,24 +28,37 @@ function UnmutedIcon() {
   )
 }
 
-// ─── Toggle Button ──────────────────────────────────────────────────────────
+function BrandMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="16" r="14" fill={COLORS.holoBase} />
+      <circle cx="16" cy="16" r="5" fill={COLORS.void} />
+    </svg>
+  )
+}
 
-function ToggleButton({ active, onClick, children, style, activeColor }: {
+// ─── Buttons ────────────────────────────────────────────────────────────────
+
+const surface: React.CSSProperties = {
+  background: COLORS.glassBg,
+  border: `1px solid ${COLORS.glassBorder}`,
+  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+}
+
+function SegmentButton({ active, onClick, children, title }: {
   active: boolean
   onClick: () => void
   children: React.ReactNode
-  style?: React.CSSProperties
-  activeColor?: { bg: string; text: string }
+  title?: string
 }) {
   return (
     <button
       onClick={onClick}
-      className="px-1.5 py-0.5 rounded transition-all"
+      title={title}
+      className="h-7 px-2.5 rounded-md text-[12px] font-medium transition-colors flex items-center"
       style={{
-        background: active ? (activeColor?.bg ?? COLORS.toggleActive) : COLORS.toggleInactive,
-        border: `1px solid ${COLORS.toggleBorder}`,
-        color: active ? (activeColor?.text ?? COLORS.holoBright) : COLORS.textMuted,
-        ...style,
+        background: active ? COLORS.toggleActive : 'transparent',
+        color: active ? COLORS.holoBright : COLORS.textDim,
       }}
     >
       {children}
@@ -53,20 +66,23 @@ function ToggleButton({ active, onClick, children, style, activeColor }: {
   )
 }
 
-// ─── Connection Status Indicator ────────────────────────────────────────────
+// ─── Connection Status ──────────────────────────────────────────────────────
 
-function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
-  const color = status === 'watching' ? COLORS.complete
-    : status === 'connected' ? COLORS.idle : COLORS.error
-  const label = status === 'watching' ? 'LIVE'
-    : status === 'connected' ? 'CONNECTED' : 'OFFLINE'
+function ConnectionIndicator({ status, isDemo }: { status: ConnectionStatus; isDemo: boolean }) {
+  const { color, label } = isDemo
+    ? { color: COLORS.waiting_permission, label: 'Demo' }
+    : status === 'disconnected'
+      ? { color: COLORS.error, label: 'Reconnecting…' }
+      : { color: COLORS.complete, label: 'Live' }
 
   return (
-    <span className="flex items-center gap-1.5">
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: color, boxShadow: `0 0 4px ${color}` }}
-      />
+    <span className="flex items-center gap-2 text-[12px] font-medium" style={{ color: COLORS.textDim }}>
+      <span className="relative flex w-2 h-2">
+        {!isDemo && status !== 'disconnected' && (
+          <span className="absolute inset-0 rounded-full animate-ping" style={{ background: color, opacity: 0.45 }} />
+        )}
+        <span className="relative w-2 h-2 rounded-full" style={{ background: color }} />
+      </span>
       {label}
     </span>
   )
@@ -83,6 +99,7 @@ export interface TopBarProps {
   onCloseSession: (id: string) => void
   // Connection
   connectionStatus: ConnectionStatus
+  isDemo: boolean
   // Stats
   agentCount: number
   totalTokens: number
@@ -100,15 +117,21 @@ export interface TopBarProps {
 export const TopBar = memo(function TopBar({
   sessions, selectedSessionId, sessionsWithActivity,
   onSelectSession, onCloseSession,
-  connectionStatus,
+  connectionStatus, isDemo,
   agentCount, totalTokens,
   showFileAttention, showTranscript, showCostOverlay, showTimeline, isMuted,
   onTogglePanel, onToggleTimeline, onToggleMute,
 }: TopBarProps) {
   return (
-    <div className="absolute top-3 left-3 right-3 flex items-center gap-4 font-mono text-[10px]" style={{ zIndex: Z.info }}>
+    <div className="absolute top-3 left-3 right-3 flex items-center gap-3" style={{ zIndex: Z.info }}>
+      {/* Brand */}
+      <div className="flex items-center gap-2 h-9 px-3 rounded-xl flex-shrink-0" style={surface}>
+        <BrandMark />
+        <span className="text-[13px] font-semibold tracking-tight" style={{ color: COLORS.textPrimary }}>agent-flow-claude</span>
+      </div>
+
       {/* Session tabs — scrollable, takes available space */}
-      {sessions.length > 1 && (
+      {sessions.length > 0 && (
         <div className="min-w-0 flex-shrink overflow-x-auto scrollbar-hide">
           <SessionTabs
             sessions={sessions}
@@ -120,42 +143,31 @@ export const TopBar = memo(function TopBar({
         </div>
       )}
 
-      {/* Spacer pushes info to the right */}
       <div className="flex-1" />
 
-      {/* Right-side info/controls */}
-      <div className="flex items-center gap-4 flex-shrink-0" style={{ color: COLORS.textMuted }}>
-        <ConnectionIndicator status={connectionStatus} />
-        <span>{agentCount} agents</span>
-        <span>
-          {formatTokens(totalTokens)} tokens
-          <span style={{ color: COLORS.complete + '65', marginLeft: 4 }}>
-            ~${agentCost(totalTokens).toFixed(2)}
-          </span>
+      {/* Status + stats */}
+      <div className="flex items-center gap-4 h-9 px-3.5 rounded-xl flex-shrink-0" style={surface}>
+        <ConnectionIndicator status={connectionStatus} isDemo={isDemo} />
+        <span className="w-px h-4" style={{ background: COLORS.glassBorder }} />
+        <span className="text-[12px] tabular-nums" style={{ color: COLORS.textDim }}>
+          <span style={{ color: COLORS.textPrimary }}>{agentCount}</span> agents
         </span>
+        <span className="text-[12px] tabular-nums" style={{ color: COLORS.textDim }}>
+          <span style={{ color: COLORS.textPrimary }}>{formatTokens(totalTokens)}</span> tokens
+          <span className="ml-1.5" style={{ color: COLORS.costText }}>~${agentCost(totalTokens).toFixed(2)}</span>
+        </span>
+      </div>
 
-        {/* Mutually exclusive panel group */}
-        <div className="flex items-center gap-1 px-1 py-0.5 rounded" style={{
-          background: COLORS.holoBg03,
-          border: `1px solid ${COLORS.holoBorder06}`,
-        }}>
-          <ToggleButton active={showFileAttention} onClick={() => onTogglePanel('files')} style={{ background: showFileAttention ? undefined : 'transparent', border: 'none' }}>Files</ToggleButton>
-          <ToggleButton active={showTranscript} onClick={() => onTogglePanel('transcript')} style={{ background: showTranscript ? undefined : 'transparent', border: 'none' }}>Chat</ToggleButton>
-          <ToggleButton
-            active={showCostOverlay}
-            onClick={() => onTogglePanel('cost')}
-            activeColor={{ bg: COLORS.costActiveBg, text: COLORS.complete }}
-            style={{ background: showCostOverlay ? undefined : 'transparent', border: 'none' }}
-          >
-            $Cost
-          </ToggleButton>
-        </div>
-
-        {/* Independent toggles */}
-        <ToggleButton active={showTimeline} onClick={onToggleTimeline}>Timeline</ToggleButton>
-        <ToggleButton active={!isMuted} onClick={onToggleMute} style={{ border: `1px solid ${COLORS.toggleBorder}` }}>
+      {/* Panels */}
+      <div className="flex items-center gap-0.5 h-9 px-1 rounded-xl flex-shrink-0" style={surface}>
+        <SegmentButton active={showTranscript} onClick={() => onTogglePanel('transcript')} title="Session transcript">Chat</SegmentButton>
+        <SegmentButton active={showFileAttention} onClick={() => onTogglePanel('files')} title="Files touched">Files</SegmentButton>
+        <SegmentButton active={showCostOverlay} onClick={() => onTogglePanel('cost')} title="Cost breakdown">Cost</SegmentButton>
+        <span className="w-px h-4 mx-1" style={{ background: COLORS.glassBorder }} />
+        <SegmentButton active={showTimeline} onClick={onToggleTimeline} title="Timeline">Timeline</SegmentButton>
+        <SegmentButton active={!isMuted} onClick={onToggleMute} title={isMuted ? 'Unmute' : 'Mute'}>
           {isMuted ? <MutedIcon /> : <UnmutedIcon />}
-        </ToggleButton>
+        </SegmentButton>
       </div>
     </div>
   )

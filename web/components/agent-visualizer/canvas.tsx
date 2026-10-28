@@ -3,7 +3,6 @@ import { Agent, Particle, Edge, Discovery, DepthParticle } from '@/lib/agent-typ
 import type { SimulationState } from '@/hooks/simulation/types'
 import { getStateColor } from '@/lib/colors'
 import { ANIM_SPEED, PERF_OVERLAY, PERF_OVERLAY_ENABLED } from '@/lib/canvas-constants'
-import { BloomRenderer } from './bloom-renderer'
 import { createDepthParticles, updateDepthParticles, drawBackground } from './background-layer'
 import {
   type VisualEffect,
@@ -52,7 +51,6 @@ export function AgentCanvas({
   const animationRef = useRef<number>(0)
   const timeRef = useRef(0)
   const simTimeRef = useRef(0)
-  const bloomRef = useRef<BloomRenderer | null>(null)
   const depthParticlesRef = useRef<DepthParticle[]>([])
   const lastFrameTimeRef = useRef(0)
   const dprRef = useRef(1)
@@ -123,9 +121,7 @@ export function AgentCanvas({
   // ─── Setup ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    bloomRef.current = new BloomRenderer(0.5)
     depthParticlesRef.current = createDepthParticles(dimensions.width, dimensions.height)
-    return () => { bloomRef.current = null }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- particles created once, resized by draw loop
   }, [])
 
@@ -139,7 +135,6 @@ export function AgentCanvas({
         const w = entry.contentRect.width
         const h = entry.contentRect.height
         setDimensions({ width: w, height: h })
-        bloomRef.current?.resize(w * dpr, h * dpr)
       }
     })
     observer.observe(container)
@@ -281,7 +276,6 @@ export function AgentCanvas({
       ctx.restore()
 
       if (showCostOverlay) drawCostSummaryPanel(ctx, agents, toolCalls)
-      if (bloomRef.current) bloomRef.current.apply(canvas, ctx)
 
       // ─── Performance overlay (enabled via ?perf or ?stress) ──────────
       if (PERF_OVERLAY_ENABLED) {

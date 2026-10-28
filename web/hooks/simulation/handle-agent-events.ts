@@ -173,8 +173,10 @@ export function handleAgentIdle(
 ): void {
   const idleName = asString(payload.name)
   const idleAgent = state.agents.get(idleName)
-  if (idleAgent && (idleAgent.state === 'tool_calling' || idleAgent.state === 'waiting_permission')) {
-    state.agents.set(idleName, { ...idleAgent, state: 'thinking', currentTool: undefined })
+  // The server sends agent_idle when a session goes quiet. The next message
+  // or context_update brings the agent back to 'thinking' when it resumes.
+  if (idleAgent && idleAgent.state !== 'complete' && idleAgent.state !== 'idle') {
+    state.agents.set(idleName, { ...idleAgent, state: 'idle', currentTool: undefined })
   }
 }
 
