@@ -50,11 +50,14 @@ pnpm dev          # server :3030 (tsx watch) + Vite :3000, /events được prox
 pnpm dev:demo     # chỉ UI, chạy kịch bản demo (?demo)
 pnpm build        # build UI + bundle server → server/dist/
 pnpm start        # node server/dist/agent-flow-claude.js
+pnpm install-global  # build + npm install -g ./server (symlink) → lệnh `agent-flow-claude` ở mọi thư mục
 pnpm test         # node:test: server/test, web/hooks, web/lib
 pnpm typecheck    # tsc cho server và web
 ```
 
 Theo dõi project khác khi dev: `AGENT_FLOW_CLAUDE_WORKSPACE=/đường/dẫn/project pnpm dev`, hoặc `node server/dist/agent-flow-claude.js -w <dir>`.
+
+Release: tăng `version` trong `server/package.json`, commit, push tag `v<version>` → workflow `release.yml` tạo GitHub Release kèm `agent-flow-claude.tgz` (cài bằng `npm install -g .../releases/latest/download/agent-flow-claude.tgz`).
 
 Chạy một file test: `node --import tsx --test server/test/<file>.test.ts`.
 

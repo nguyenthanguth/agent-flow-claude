@@ -28,35 +28,49 @@ Real-time visualization of Claude Code sessions in your browser. Watch the main 
 - **Review mode**: pause and scrub back through the session
 - **Reload-safe**: every connection replays the full history, so refreshing never loses or duplicates events
 
-## Quick start
+## Install
 
-Requirements: [Node.js](https://nodejs.org/) 20+ and [pnpm](https://pnpm.io/) 10.
+Install it once, globally, then run it from any project folder. It needs [Node.js](https://nodejs.org/) 20+, and has no runtime dependencies.
+
+**From a release** (no clone, no build):
+
+```bash
+npm install -g https://github.com/nguyenthanguth/agent-flow-claude/releases/latest/download/agent-flow-claude.tgz
+```
+
+**From source** (to modify it, with [pnpm](https://pnpm.io/) 10):
 
 ```bash
 git clone https://github.com/nguyenthanguth/agent-flow-claude.git
 cd agent-flow-claude
 pnpm install
-pnpm build
+pnpm install-global     # builds, then npm install -g ./server
 ```
 
-Then point it at the project you work on with Claude Code:
+The source install is a link to your clone, so after a `git pull && pnpm build` the global command is up to date. To remove it: `npm uninstall -g agent-flow-claude`.
+
+## Usage
+
+Go to the project you work on with Claude Code and start it:
 
 ```bash
-node server/dist/agent-flow-claude.js --workspace /path/to/your/project
+cd /path/to/your/project
+agent-flow-claude
 ```
 
-Your browser opens at http://127.0.0.1:3030. Start or continue a Claude Code session in that project; it appears within about a second.
+Your browser opens at http://127.0.0.1:3030. Start or continue a Claude Code session in that folder (or a subfolder); it appears within about a second. Stop the server with `Ctrl+C`.
 
-**No build tools?** Every push to `main` builds a ready-to-run bundle. Download the `agent-flow-claude` artifact from the latest [CI run](https://github.com/nguyenthanguth/agent-flow-claude/actions/workflows/ci.yml), unzip it, and run `node agent-flow-claude.js --workspace <project>`. It needs only Node.js, with no `npm install`.
+Without installing, you can run a build directly: `node server/dist/agent-flow-claude.js`. Each CI run also uploads a ready-to-run build as the `agent-flow-claude` artifact.
 
 ### Options
 
 | Option | Description |
 |---|---|
-| `-w, --workspace <dir>` | Project to watch. Default: `$AGENT_FLOW_CLAUDE_WORKSPACE`, then the current directory. Subfolders of the project are included |
-| `-p, --port <number>` | Server port (default `3030`) |
+| `-w, --workspace <dir>` | Watch this project instead of the current directory (also `$AGENT_FLOW_CLAUDE_WORKSPACE`). Subfolders are included |
+| `-p, --port <number>` | Server port (default `3030`). Use a different port to watch two projects at once |
 | `--no-open` | Don't open the browser |
-| `-v, --verbose` | Log every event |
+| `--verbose` | Log every event |
+| `-v, --version` | Print the version |
 
 A session is picked up if its transcript, or one of its subagents', was written in the last 10 minutes. Older sessions attach as soon as they are written to again.
 
@@ -89,9 +103,19 @@ pnpm typecheck    # TypeScript, server + web
 pnpm build        # production build into server/dist/
 ```
 
-To watch another project while developing: `AGENT_FLOW_CLAUDE_WORKSPACE=/path/to/project pnpm dev`.
+To watch another project while developing: `AGENT_FLOW_CLAUDE_WORKSPACE=/path/to/project pnpm dev`. The dev server uses port 3030 too, so stop a running `agent-flow-claude` first.
 
 GitHub Actions runs tests, typecheck and build on every push and pull request, and uploads the build as an artifact.
+
+### Releasing
+
+Bump `version` in `server/package.json`, commit, then push a matching tag:
+
+```bash
+git tag v1.0.1 && git push origin v1.0.1
+```
+
+The Release workflow tests and builds, then publishes a GitHub Release with `agent-flow-claude.tgz`, which is what the install command above downloads.
 
 ### Windows
 

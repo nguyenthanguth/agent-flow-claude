@@ -7,3 +7,8 @@ dist
 
 # Claude Code
 .claude/
+
+# npm pack output and files copied in by the release workflow
+server/*.tgz
+server/LICENSE
+server/README.md

@@ -9,12 +9,12 @@
  *
  * Usage: agent-flow-claude [--port <number>] [--no-open] [--verbose]
  */
-import { parseArgs } from './args'
+import { parseArgs, version } from './args'
 import { startServer } from './server'
 
 const args = parseArgs(process.argv.slice(2))
 
-console.log('agent-flow-claude\n')
+console.log(`agent-flow-claude ${version()}\n`)
 
 startServer({
   port: args.port,

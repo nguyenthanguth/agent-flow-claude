@@ -2,6 +2,7 @@
 
 ## Unreleased (fork)
 
+- **Global install**: `npm install -g <release .tgz>` (or `pnpm install-global` from source), then run `agent-flow-claude` in any project folder. Tagging `v*` publishes a GitHub Release with the tarball. New `--version` flag; `-v` now means `--version` (use `--verbose` for event logs)
 - **Renamed to agent-flow-claude** (based on Agent Flow). The CLI is `agent-flow-claude` (`server/dist/agent-flow-claude.js`) and the workspace variable is `AGENT_FLOW_CLAUDE_WORKSPACE`. CI uploads a ready-to-run build as an artifact
 - Fix: a JSONL line read while Claude Code was still writing it was lost for good (for example a large tool result, which left its card "running"). Reads now stop at the last complete line and pick the rest up on the next read
 - Fix: on long sessions the replay buffer trimmed the first `agent_spawn` events, so after a reload the main agent and early subagents were missing. Trimming now keeps spawn, dispatch, return, complete and model events

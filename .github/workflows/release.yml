@@ -1,0 +1,57 @@
+name: Release
+
+# Push a tag like v1.0.0 (matching server/package.json "version") to publish a
+# GitHub Release with an npm-installable tarball:
+#   npm install -g https://github.com/<owner>/<repo>/releases/latest/download/agent-flow-claude.tgz
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Check tag matches package version
+        run: |
+          VERSION="$(node -p "require('./server/package.json').version")"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match server/package.json version $VERSION" >&2
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+
+      - name: Pack
+        run: |
+          cp LICENSE README.md server/
+          cd server
+          npm pack
+          # Stable name so .../releases/latest/download/agent-flow-claude.tgz always works
+          cp agent-flow-claude-*.tgz agent-flow-claude.tgz
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            server/agent-flow-claude.tgz \
+            server/agent-flow-claude-*.tgz \
+            --title "agent-flow-claude $GITHUB_REF_NAME" \
+            --generate-notes

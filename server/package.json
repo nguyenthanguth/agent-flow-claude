@@ -6,6 +6,13 @@
   "bin": {
     "agent-flow-claude": "dist/agent-flow-claude.js"
   },
+  "files": [
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nguyenthanguth/agent-flow-claude.git"
+  },
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20"

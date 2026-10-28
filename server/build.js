@@ -27,6 +27,9 @@ esbuild.buildSync({
   platform: 'node',
   target: 'node20',
   outfile: path.join(__dirname, 'dist', 'agent-flow-claude.js'),
+  define: {
+    AGENT_FLOW_CLAUDE_VERSION: JSON.stringify(require('./package.json').version),
+  },
   banner: { js: '#!/usr/bin/env node' },
   sourcemap: false,
   logLevel: 'warning',
